@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0F0D" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="AegisMind — AI-Powered Mental Health Monitoring & Consoling Companion" />
+  <title>AegisMind</title>
+
+  <!-- Google Fonts: Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="/static/css/mobile.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOAST CONTAINER & CRISIS OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+<div id="crisis-lock-overlay" class="crisis-lock-overlay"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONSENT ONBOARDING MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="consent-modal" class="modal-center">
+  <div class="modal-card">
+    <div class="brand-logo" style="width:48px;height:48px;margin:0 auto 12px;border-radius:12px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <h2 class="modal-title text-center" data-i18n="consent_title" style="margin-bottom:4px;">Informed Consent</h2>
+    <p class="modal-subtitle text-center" data-i18n="consent_subtitle" style="margin-bottom:16px;">AegisMind provides confidential mental health support and distress prediction.</p>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><span style="color:var(--brand-green)">•</span> <span data-i18n="consent_anon">Anonymized Session</span></div>
+      <div class="glossary-def" data-i18n="consent_anon_text">All data is processed under a random anonymous token without personal identity tracking.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term"><span style="color:var(--brand-yellow)">•</span> <span data-i18n="consent_zk">Private Text Processing</span></div>
+      <div class="glossary-def" data-i18n="consent_zk_text">Your journals are evaluated locally and in memory. Raw journal text is never sold or retained.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term"><span style="color:var(--brand-orange)">•</span> <span data-i18n="consent_crisis">Emergency Escalation</span></div>
+      <div class="glossary-def" data-i18n="consent_crisis_text">If severe distress is detected, emergency helpline options and counselor support are provided.</div>
+    </div>
+
+    <button class="btn btn-primary mt-3" onclick="acceptConsent()" data-i18n="consent_agree">I Understand &amp; Agree</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CLINICAL GLOSSARY & TERM EXPLAINER MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="glossary-modal" class="modal-center">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);" data-i18n="glossary_title">Clinical Terms Explained</h3>
+      <button onclick="closeGlossaryModal()" class="info-btn">✕</button>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> DPI (Distress Prediction Index)</div>
+      <div class="glossary-def" data-i18n="def_dpi">A composite score from 0.0 to 1.0 reflecting your current emotional load. It combines your words, mood sliders, and voice clarity. Lower numbers mean higher calm and balance.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Trajectory Velocity (ΔDPI)</div>
+      <div class="glossary-def" data-i18n="def_delta">The rate and direction of emotional change across your recent check-ins. A steady or negative slope means improving calm, while a steep rise flags potential fatigue.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Pronoun Density</div>
+      <div class="glossary-def" data-i18n="def_pronoun">Psychological research shows that when feeling overwhelmed, people naturally use more first-person words ("I", "me", "my"). Tracking this provides an objective wellness signal.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Absolutist Words</div>
+      <div class="glossary-def" data-i18n="def_absolute">All-or-nothing words like "always", "never", "nothing", or "completely". In cognitive psychology (CBT), identifying these patterns helps build flexible perspective.</div>
+    </div>
+
+    <div class="glossary-item">
+      <div class="glossary-term"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Emotional Valence &amp; Arousal</div>
+      <div class="glossary-def" data-i18n="def_valence">Valence measures how pleasant or heavy an emotion feels (1 to 5). Arousal measures your physiological energy level from calm (1) to restless (5).</div>
+    </div>
+
+    <button class="btn btn-secondary w-full mt-3" onclick="closeGlossaryModal()" data-i18n="btn_got_it">Got It</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     5-4-3-2-1 SENSORY GROUNDING MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="grounding-modal" class="modal-center">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:11px;font-weight:700;color:var(--brand-green);text-transform:uppercase;" data-i18n="grounding_badge">Sensory Anchor</span>
+      <button onclick="closeGroundingModal()" class="info-btn">✕</button>
+    </div>
+
+    <div style="background:var(--bg-elevated);border-radius:12px;padding:20px;text-align:center;margin:12px 0;">
+      <div id="grounding-step-num" style="width:40px;height:40px;border-radius:50%;background:var(--brand-green);color:#080C0A;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">5</div>
+      <h3 id="grounding-step-title" style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Sight</h3>
+      <p id="grounding-step-desc" style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Look around and acknowledge 5 things you can see right now.</p>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="prevGroundingStep()" id="grounding-prev-btn" data-i18n="btn_prev">Previous</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="nextGroundingStep()" id="grounding-next-btn" data-i18n="btn_next">Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CRISIS EMERGENCY MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="crisis-modal" class="modal-center" style="z-index:500">
+  <div class="modal-card" id="crisis-modal-content">
+    <div style="text-align:center;padding:8px 0 12px;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--risk-critical-bg);border:1.5px solid var(--risk-critical);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--risk-critical);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h3 class="modal-title" data-i18n="crisis_title" style="margin-bottom:2px;">Support Is Available</h3>
+      <p class="modal-subtitle" data-i18n="crisis_subtitle" style="margin-bottom:0;">You are not alone. Please reach out to trained support counselors 24/7.</p>
+    </div>
+
+    <div class="helpline-grid">
+      <a href="tel:14416" class="helpline-btn">
+        <div class="helpline-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.5 2 2 0 0 1 3.58 1.35h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.9a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></div>
+        <div class="helpline-info"><div class="helpline-name" data-i18n="helpline_tele">Tele-MANAS (India)</div><div class="helpline-number">14416</div></div>
+      </a>
+      <a href="tel:18005990019" class="helpline-btn">
+        <div class="helpline-icon" style="background:var(--brand-yellow);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.5 2 2 0 0 1 3.58 1.35h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.9a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></div>
+        <div class="helpline-info"><div class="helpline-name" data-i18n="helpline_kiran">KIRAN Helpline</div><div class="helpline-number">1800-599-0019</div></div>
+      </a>
+      <a href="tel:988" class="helpline-btn">
+        <div class="helpline-icon" style="background:var(--brand-orange);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.5 2 2 0 0 1 3.58 1.35h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.9a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></div>
+        <div class="helpline-info"><div class="helpline-name" data-i18n="helpline_988">988 Lifeline (US)</div><div class="helpline-number">988</div></div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="breath-pacer">
+      <div class="breath-circle-wrap">
+        <div class="breath-circle" id="breath-circle">
+          <div>
+            <span class="breath-instruction" id="breath-instruction" data-i18n="breath_inhale">Inhale</span>
+            <span class="breath-count" id="breath-count">4</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" id="breath-start-btn" onclick="startBreathing()" data-i18n="breath_start">Start 4-7-8 Breathing</button>
+    </div>
+
+    <button class="btn btn-secondary w-full mt-3" onclick="hideCrisisModal()" data-i18n="close_crisis">Close</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════ -->
+<div id="app-shell">
+
+  <!-- TOP HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">AegisMind</span>
+        <span class="brand-tagline" data-i18n="tagline">Mental Wellness Companion</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="info-btn" onclick="openGlossaryModal()" title="Terms Glossary">?</button>
+      <button class="lang-toggle" id="lang-btn" onclick="toggleLanguage()">हिन्दी</button>
+      <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- PANELS CONTAINER -->
+  <main class="panels-container">
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 1: HOME
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-home">
+      <div class="home-greeting">
+        <div class="greeting-time" id="greeting-time-str" data-i18n="greeting_morning">Good morning,</div>
+        <h1 class="greeting-text"><span id="greeting-name">Friend</span></h1>
+        <p class="greeting-sub" id="greeting-sub-text" data-i18n="greeting_sub">How is your mind feeling today?</p>
+      </div>
+
+      <!-- Affirmation Capsule -->
+      <div class="affirmation-card">
+        <div class="affirmation-header">
+          <span class="affirmation-label" data-i18n="daily_capsule">Daily Grounding</span>
+          <button class="affirmation-refresh-btn" onclick="nextAffirmation()" title="New affirmation">↻</button>
+        </div>
+        <div class="affirmation-text" id="affirmation-text">"You don't have to control your thoughts. You just have to stop letting them control you."</div>
+        <div class="affirmation-author" id="affirmation-author">— Dan Millman</div>
+      </div>
+
+      <!-- Quick Action Toolkit -->
+      <div class="toolkit-grid">
+        <div class="toolkit-card" onclick="navigateTo('chat')">
+          <div class="toolkit-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <div class="toolkit-title" data-i18n="tool_companion">AI Companion</div>
+            <div class="toolkit-sub" data-i18n="tool_companion_sub">Talk &amp; console</div>
+          </div>
+        </div>
+
+        <div class="toolkit-card" onclick="openGroundingModal()">
+          <div class="toolkit-icon-wrap yellow">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div class="toolkit-title" data-i18n="tool_ground">5-4-3-2-1 Ground</div>
+            <div class="toolkit-sub" data-i18n="tool_ground_sub">Sensory anchor</div>
+          </div>
+        </div>
+
+        <div class="toolkit-card" onclick="toggleCalmSound()">
+          <div class="toolkit-icon-wrap orange">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </div>
+          <div>
+            <div class="toolkit-title" id="calm-sound-title" data-i18n="tool_audio">Calm Waves</div>
+            <div class="toolkit-sub" id="calm-sound-status" data-i18n="tool_audio_sub">432Hz tone</div>
+          </div>
+        </div>
+
+        <div class="toolkit-card" onclick="showCrisisModal()">
+          <div class="toolkit-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          </div>
+          <div>
+            <div class="toolkit-title" data-i18n="tool_breath">4-7-8 Breathing</div>
+            <div class="toolkit-sub" data-i18n="tool_breath_sub">Instant calm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="quick-stats">
+        <div class="stat-tile">
+          <div class="stat-tile-top">
+            <span class="stat-tile-label" data-i18n="stat_checkins">Check-Ins</span>
+          </div>
+          <div class="stat-tile-value" id="stat-checkins">0</div>
+        </div>
+
+        <div class="stat-tile">
+          <div class="stat-tile-top">
+            <span class="stat-tile-label" data-i18n="stat_dpi">Avg DPI</span>
+            <button class="info-btn" onclick="openGlossaryModal()">?</button>
+          </div>
+          <div class="stat-tile-value" id="stat-dpi">—</div>
+        </div>
+
+        <div class="stat-tile">
+          <div class="stat-tile-top">
+            <span class="stat-tile-label" data-i18n="stat_streak">Day Streak</span>
+          </div>
+          <div class="stat-tile-value" id="stat-streak">0</div>
+        </div>
+
+        <div class="stat-tile">
+          <div class="stat-tile-top">
+            <span class="stat-tile-label" data-i18n="stat_risk">Risk Level</span>
+          </div>
+          <div class="stat-tile-value" id="stat-risk">—</div>
+        </div>
+      </div>
+
+      <!-- Insight Card -->
+      <div id="home-insight" class="insight-card">
+        <div class="insight-title" data-i18n="insight_neutral_title">Welcome to AegisMind</div>
+        <p class="insight-text" data-i18n="insight_neutral_text">Complete your first check-in to begin tracking your mental wellness journey.</p>
+      </div>
+
+      <!-- Home Sparkline -->
+      <div id="home-sparkline-section" style="display:none">
+        <div class="card" style="padding:12px;">
+          <div class="card-title">
+            <span data-i18n="sparkline_label">7-Day DPI Trajectory</span>
+            <button class="info-btn" onclick="openGlossaryModal()">?</button>
+          </div>
+          <canvas id="home-sparkline" class="sparkline-canvas" height="36" style="width:100%;display:block;"></canvas>
+        </div>
+      </div>
+
+      <button class="btn btn-primary mt-2" onclick="navigateTo('checkin')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="start_checkin">Start Daily Check-In</span>
+      </button>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 2: AI COMPANION (CHATBOT)
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-chat">
+      <div class="section-heading" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span data-i18n="chat_title">Aegis Companion</span>
+      </div>
+
+      <div class="chat-container">
+        <!-- Chat Feed -->
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-bubble-wrap companion">
+            <div class="chat-avatar">AI</div>
+            <div class="chat-bubble" data-i18n="chat_welcome">Hello friend. I'm here to listen, support, and console you without any judgment. How are you feeling right now?</div>
+          </div>
+        </div>
+
+        <!-- Quick Reply Chips -->
+        <div class="chat-chips-row">
+          <button class="chat-chip" onclick="sendQuickChat('I feel overwhelmed and stressed.')" data-i18n="chip_overwhelmed">I feel overwhelmed</button>
+          <button class="chat-chip" onclick="sendQuickChat('Can you help me calm down?')" data-i18n="chip_calm">Help me calm down</button>
+          <button class="chat-chip" onclick="sendQuickChat('I am feeling lonely today.')" data-i18n="chip_lonely">I feel lonely</button>
+          <button class="chat-chip" onclick="sendQuickChat('Tell me something reassuring.')" data-i18n="chip_reassure">Tell me something comforting</button>
+        </div>
+
+        <!-- Input Bar -->
+        <form class="chat-input-bar" onsubmit="event.preventDefault(); sendChatMessage();">
+          <input type="text" id="chat-input" class="chat-input" data-i18n-ph="chat_placeholder" placeholder="Type your thoughts..." autocomplete="off" />
+          <button type="submit" class="chat-send-btn" id="chat-send-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 3: CHECK-IN
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-checkin">
+      <div class="section-heading" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="checkin_title">Daily Check-In</span>
+      </div>
+
+      <!-- CHECK-IN FORM -->
+      <div id="checkin-form">
+        <!-- Sliders -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <span data-i18n="valence_label">Emotional Valence</span>
+            </div>
+            <button class="info-btn" onclick="openGlossaryModal()">?</button>
+          </div>
+
+          <div class="slider-wrapper">
+            <div class="slider-label">
+              <span data-i18n="valence_label">Emotional Valence</span>
+              <span class="slider-value" id="valence-val">3</span>
+            </div>
+            <input type="range" class="mood-slider" id="valence-slider" min="1" max="5" step="1" value="3" data-value-el="valence-val" />
+            <div class="mood-labels"><span data-i18n="valence_low">Heavy / Low</span><span data-i18n="valence_high">Positive / High</span></div>
+          </div>
+
+          <div class="slider-wrapper" style="margin-bottom:0">
+            <div class="slider-label">
+              <span data-i18n="arousal_label">Arousal Level</span>
+              <span class="slider-value" id="arousal-val">3</span>
+            </div>
+            <input type="range" class="mood-slider" id="arousal-slider" min="1" max="5" step="1" value="3" data-value-el="arousal-val" />
+            <div class="mood-labels"><span data-i18n="arousal_low">Calm</span><span data-i18n="arousal_high">Restless</span></div>
+          </div>
+        </div>
+
+        <!-- Journal Textarea -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span data-i18n="journal_label">Reflective Journal</span>
+            </div>
+          </div>
+          <textarea id="journal-input" class="journal-textarea" maxlength="800" data-i18n-ph="journal_placeholder" placeholder="Write down your thoughts and feelings..."></textarea>
+          <div class="char-counter"><span id="char-count">0</span>/800</div>
+        </div>
+
+        <!-- Voice Note -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+              <span data-i18n="voice_label">Voice Note</span>
+            </div>
+            <span style="font-size:11px;color:var(--text-muted);"><span data-i18n="voice_score_label">Clarity</span>: <span id="voice-score" style="color:var(--brand-yellow);font-weight:700;">--</span></span>
+          </div>
+
+          <div class="voice-recorder">
+            <div class="waveform-container">
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            </div>
+            <div class="recording-timer" id="record-timer">00:00</div>
+            <button class="btn-record" id="record-btn" onclick="toggleRecording()">
+              <span id="record-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </span>
+            </button>
+            <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:6px;" id="voice-status" data-i18n="voice_tap">Tap to record a voice note</p>
+          </div>
+        </div>
+
+        <button class="btn btn-primary mt-2" id="submit-btn" onclick="submitCheckin()">
+          <span data-i18n="submit_checkin">Submit Check-In</span>
+        </button>
+      </div>
+
+      <!-- CHECK-IN RESULTS -->
+      <div id="checkin-result" style="display:none">
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <span data-i18n="dpi_label">Distress Prediction Index</span>
+              <button class="info-btn" onclick="openGlossaryModal()">?</button>
+            </div>
+            <span id="risk-badge" class="risk-badge low"><span class="badge-dot"></span>Low Risk</span>
+          </div>
+
+          <div class="dpi-display">
+            <div class="dpi-gauge">
+              <canvas id="dpi-canvas" width="72" height="72"></canvas>
+              <div class="dpi-value">
+                <span class="dpi-number" id="dpi-number">0.00</span>
+                <span class="dpi-label">DPI</span>
+              </div>
+            </div>
+            <div class="dpi-meta">
+              <div class="dpi-meta-title">
+                <span data-i18n="delta_label">Trajectory (ΔDPI)</span>
+                <button class="info-btn" onclick="openGlossaryModal()">?</button>
+              </div>
+              <div class="dpi-meta-delta" id="delta-dpi-val">+0.000</div>
+              <canvas id="sparkline-canvas" class="sparkline-canvas" height="32" style="width:100%;display:block;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown Grid -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <span data-i18n="nlp_breakdown">Linguistic Analysis</span>
+            </div>
+            <button class="info-btn" onclick="openGlossaryModal()">?</button>
+          </div>
+          <div class="nlp-grid">
+            <div id="metric-pronoun"  class="nlp-metric"></div>
+            <div id="metric-absolute" class="nlp-metric"></div>
+            <div id="metric-valence"  class="nlp-metric"></div>
+            <div id="metric-voice"    class="nlp-metric"></div>
+          </div>
+        </div>
+
+        <!-- Insight recommendation -->
+        <div id="recommendation-text" class="insight-card"></div>
+        <div id="hitl-notice" style="display:none"></div>
+
+        <button class="btn btn-secondary w-full mt-3" onclick="resetCheckinForm()">
+          <span data-i18n="new_checkin">New Check-In</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 4: FORUM
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-forum">
+      <div class="section-heading" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span data-i18n="forum_title">Community Support</span>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <textarea id="forum-compose" class="journal-textarea" maxlength="800" data-i18n-ph="forum_compose" placeholder="Share your thoughts anonymously..."></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <div class="char-counter"><span id="forum-char-count">0</span>/800</div>
+          <button class="btn btn-primary btn-sm" id="forum-post-btn" onclick="submitForumPost()" data-i18n="forum_post_btn">Post</button>
+        </div>
+      </div>
+
+      <div id="forum-feed"></div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 5: COUNSELOR DESK
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-counselor">
+      <div class="counselor-badge" style="display:inline-block;padding:3px 8px;border-radius:4px;background:var(--bg-elevated);font-size:11px;font-weight:700;color:var(--brand-yellow);margin-bottom:8px;">
+        <span data-i18n="counselor_badge">HITL Coordinator</span>
+      </div>
+
+      <div class="section-heading" style="margin-top:0;">
+        <span data-i18n="queue_title">Review Queue</span> (<span id="queue-total-count">0</span>)
+      </div>
+
+      <div id="counselor-queue"></div>
+
+      <button class="btn btn-secondary w-full mt-3" onclick="loadCounselorQueue()">Refresh Queue</button>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         PANEL 6: PROFILE
+    ════════════════════════════════════════════════════════ -->
+    <section class="panel" id="panel-profile">
+      <div class="profile-hero">
+        <div class="profile-avatar-ring">👤</div>
+        <h2 class="profile-alias" id="profile-alias-display" style="font-size:16px;font-weight:700;">Anonymous</h2>
+        <div class="profile-token" id="profile-token-display" onclick="copyToken()" style="cursor:pointer;font-size:11px;color:var(--text-muted);" title="Click to copy">—</div>
+      </div>
+
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-value" id="profile-checkin-count">0</div><div class="profile-stat-label" data-i18n="stat_checkins">Check-Ins</div></div>
+        <div class="profile-stat"><div class="profile-stat-value" id="profile-avg-dpi">—</div><div class="profile-stat-label" data-i18n="stat_dpi">Avg DPI</div></div>
+        <div class="profile-stat"><div class="profile-stat-value" id="profile-streak">0</div><div class="profile-stat-label" data-i18n="stat_streak">Streak</div></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-row" onclick="openGlossaryModal()">
+          <span data-i18n="glossary_title">Clinical Terms Explained</span>
+          <span style="font-size:12px;color:var(--text-muted);">View ›</span>
+        </div>
+        <div class="settings-row" onclick="toggleTheme()">
+          <span data-i18n="setting_theme">Dark Mode</span>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="theme-toggle-input" onchange="toggleTheme()" />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="settings-row" onclick="toggleLanguage()">
+          <span data-i18n="setting_lang">Language</span>
+          <span style="font-size:12px;color:var(--brand-green);" id="current-lang-display">EN / हिन्दी</span>
+        </div>
+        <div class="settings-row" onclick="exportData()">
+          <span data-i18n="setting_export">Export Data</span>
+          <span style="font-size:12px;color:var(--text-muted);">JSON ›</span>
+        </div>
+        <div class="settings-row" onclick="resetSession()" style="border-bottom:none;">
+          <span style="color:var(--risk-critical);" data-i18n="setting_reset">Reset Session</span>
+          <span style="font-size:12px;color:var(--text-muted);">Clear ›</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FLOATING CRISIS BUTTON -->
+  <button class="crisis-fab" onclick="showCrisisModal()" title="I Need Help Now" aria-label="Crisis Help">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  </button>
+
+  <!-- BOTTOM DOCK -->
+  <nav class="bottom-dock" role="navigation" aria-label="Navigation">
+    <button class="dock-item active" id="dock-home" onclick="navigateTo('home')" aria-label="Home">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span data-i18n="nav_home">Home</span>
+    </button>
+
+    <button class="dock-item" id="dock-chat" onclick="navigateTo('chat')" aria-label="Companion">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span data-i18n="nav_chat">Companion</span>
+    </button>
+
+    <button class="dock-item" id="dock-checkin" onclick="navigateTo('checkin')" aria-label="Check-In">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span data-i18n="nav_checkin">Check-In</span>
+    </button>
+
+    <button class="dock-item" id="dock-forum" onclick="navigateTo('forum')" aria-label="Community">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <span data-i18n="nav_forum">Community</span>
+    </button>
+
+    <button class="dock-item" id="dock-profile" onclick="navigateTo('profile')" aria-label="Profile">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-i18n="nav_profile">Profile</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- App JS -->
+<script src="/static/js/app.js"></script>
+</body>
+</html>

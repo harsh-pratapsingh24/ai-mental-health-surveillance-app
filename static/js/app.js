@@ -408,6 +408,7 @@ function stopCalmSound() {
 // ────────────────────────────────────────────────────────────────
 const State = {
   lang:         localStorage.getItem('aegis_lang')    || 'en',
+  forumLang:    localStorage.getItem('aegis_forum_lang') || 'en',
   theme:        localStorage.getItem('aegis_theme')   || 'dark',
   token:        localStorage.getItem('aegis_token')   || null,
   alias:        localStorage.getItem('aegis_alias')   || null,
@@ -428,6 +429,7 @@ const State = {
 
 function saveState() {
   localStorage.setItem('aegis_lang',    State.lang);
+  localStorage.setItem('aegis_forum_lang', State.forumLang);
   localStorage.setItem('aegis_theme',   State.theme);
   if (State.token)   localStorage.setItem('aegis_token',   State.token);
   if (State.alias)   localStorage.setItem('aegis_alias',   State.alias);
@@ -1123,10 +1125,30 @@ async function loadForum() {
   try {
     const res = await fetch('/api/forum');
     const data = await res.json();
-    renderForum(data.posts || []);
+    const activeLanguage = State.forumLang || 'en';
+    renderForum((data.posts || []).filter(post => (post.lang || 'en') === activeLanguage));
+    updateForumTabs();
   } catch {
     container.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">${t('forum_empty')}</p>`;
   }
+}
+
+function setForumLanguage(lang) {
+  if (lang !== 'en' && lang !== 'hi') return;
+  State.forumLang = lang;
+  saveState();
+  updateForumTabs();
+  loadForum();
+}
+
+function updateForumTabs() {
+  ['en', 'hi'].forEach(lang => {
+    const tab = $(`community-tab-${lang}`);
+    if (!tab) return;
+    const active = State.forumLang === lang;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', String(active));
+  });
 }
 
 function renderForum(posts) {
@@ -1163,7 +1185,7 @@ async function submitForumPost() {
     const res = await fetch('/api/forum', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang: State.lang }),
+      body: JSON.stringify({ text, lang: State.forumLang || State.lang }),
     });
     if (res.ok) {
       textarea.value = '';
@@ -1295,6 +1317,7 @@ window.submitCheckin      = submitCheckin;
 window.resetCheckinForm   = resetCheckinForm;
 window.startBreathing     = startBreathing;
 window.submitForumPost    = submitForumPost;
+window.setForumLanguage   = setForumLanguage;
 window.reactPost          = reactPost;
 window.loadCounselorQueue = loadCounselorQueue;
 window.markReviewed       = markReviewed;

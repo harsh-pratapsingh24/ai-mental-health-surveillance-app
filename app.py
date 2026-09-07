@@ -20,10 +20,35 @@ import string
 from datetime import datetime, timedelta, timezone
 from collections import deque
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from dotenv import load_dotenv
+
+load_dotenv()
+
+try:
+    from authlib.integrations.flask_client import OAuth
+except ImportError:
+    OAuth = None
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "aegismind-secret-2024-clinical-ai")
+# Set FLASK_SECRET_KEY in the environment for every deployed instance. The
+# generated fallback keeps local development safe but invalidates sessions after
+# each server restart, so it must not be relied on in production.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.environ.get("SECRET_KEY") or os.urandom(32)
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
+oauth = OAuth(app) if OAuth else None
+google = None
+if oauth and GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    google = oauth.register(
+        name="google",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
 
 # ===========================================================================
 # EXTERNAL API INTEGRATION SLOTS (Fill these with your production keys / env vars)
@@ -31,6 +56,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "aegismind-secret-2024-clinical-ai
 OPENAI_API_KEY      = os.environ.get("OPENAI_API_KEY", "")        # e.g. "sk-proj-..."
 ANTHROPIC_API_KEY   = os.environ.get("ANTHROPIC_API_KEY", "")     # e.g. "sk-ant-..."
 GEMINI_API_KEY      = os.environ.get("GEMINI_API_KEY", "")        # e.g. "AIzaSy..."
+GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")          # e.g. "gsk_..."
 TELE_MANAS_API_URL  = os.environ.get("TELE_MANAS_API_URL", "")    # e.g. "https://telemanas.mohfw.gov.in/api/v1/escalation"
 TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID", "")    # e.g. "AC..."
 TWILIO_AUTH_TOKEN   = os.environ.get("TWILIO_AUTH_TOKEN", "")     # e.g. "..."
@@ -343,18 +369,63 @@ def generate_companion_reply(user_msg: str, lang: str = "en") -> dict:
             "is_crisis": True
         }
 
-    # 2. External LLM API Hook (If OPENAI_API_KEY, ANTHROPIC_API_KEY or GEMINI_API_KEY configured)
+    # 2. External LLM API Hook (Groq API - Primary, then OpenAI/Anthropic/Gemini fallbacks)
+    if GROQ_API_KEY:
+        try:
+            from groq import Groq
+            client = Groq(api_key=GROQ_API_KEY)
+            
+            system_prompt = """You are Aegis Companion — a supportive AI listener for mental wellness.
+You are NOT a therapist, counselor, or crisis line. You do not diagnose, treat, or replace professional care.
+
+CORE PRINCIPLES:
+• Validate first: "That sounds really hard" / "It makes sense you'd feel that way"
+• No toxic positivity: Avoid "just think positive," "it could be worse," "you'll be fine"
+• No fixing: Don't problem-solve unless asked. Ask "Would it help to talk through it, or would you prefer a grounding exercise?"
+• Gentle boundaries: "I'm here to listen. For clinical support, a therapist can help with that."
+• Crisis-aware: If ANY self-harm/suicide language → immediate helpline + "Your life matters"
+
+RESPONSE STYLE:
+• 2-3 sentences max. One gentle question or invitation.
+• Warm, calm, non-clinical. Use "I hear you" not "I understand" (you don't).
+• Offer ONE grounding technique if distress signals present (4-7-8 breath, 5-4-3-2-1, box breathing).
+• Hindi responses: Natural Hinglish ok. Avoid overly formal "shuddh" Hindi.
+
+EVERY RESPONSE must be safe for someone in acute distress.
+If unsure, err toward: "I'm here. You're not alone. Help is available 24/7: 14416 (Tele-MANAS), 988, 1800-599-0019 (KIRAN)."
+"""
+            
+            response = client.chat.completions.create(
+                model="qwen/qwen3.8-27b",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg}
+                ],
+                temperature=0.7,
+                max_tokens=200,
+            )
+            reply_text = response.choices[0].message.content.strip()
+            
+            # Proactive helpline injection for moderate-high distress (non-crisis)
+            high_distress_signals = [
+                "hopeless", "overwhelmed", "can't cope", "breaking down", "drowning",
+                "giving up", "no point", "worthless", "burden", "ending it",
+                "निराश", "टूट", "सहन नहीं", "खत्म", "बेकार", "बोझ"
+            ]
+            if any(signal in msg_lower for signal in high_distress_signals):
+                if lang == "hi":
+                    reply_text += "\n\nअगर यह बहुत भारी लगे, तो 14416 (टेली-मानस) और 1800-599-0019 (किरण) मुफ़्त हैं, 24/7। आपको अकेले नहीं सहना पड़ेगा।"
+                else:
+                    reply_text += "\n\nIf it gets too heavy, 14416 (Tele-MANAS) and 988 are free, 24/7. You don't have to carry this alone."
+            
+            return {"reply": reply_text, "is_crisis": False}
+        except Exception as e:
+            print(f"Groq API error: {e}")
+            pass
+
     if OPENAI_API_KEY:
         try:
             # Placeholder for OpenAI / Claude / Gemini API call
-            # response = openai.ChatCompletion.create(
-            #     model="gpt-4o-mini",
-            #     messages=[
-            #         {"role": "system", "content": "You are Aegis Companion, a warm, comforting mental health supportive chatbot. Validate feelings, offer gentle grounding, never diagnose."},
-            #         {"role": "user", "content": user_msg}
-            #     ]
-            # )
-            # return {"reply": response.choices[0].message.content, "is_crisis": False}
             pass
         except Exception:
             pass
@@ -427,6 +498,54 @@ def generate_alias() -> str:
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/login")
+def login():
+    """Render the shared Google sign-in/sign-up entry point."""
+    if session.get("google_user"):
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+
+@app.route("/auth/google")
+def google_login():
+    """Start a Google OpenID Connect sign-in flow."""
+    if google is None:
+        return jsonify({
+            "error": "google_oauth_not_configured",
+            "message": "Install Authlib and set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and FLASK_SECRET_KEY.",
+        }), 503
+
+    return google.authorize_redirect(url_for("google_callback", _external=True))
+
+
+@app.route("/auth/google/callback")
+def google_callback():
+    """Finish Google sign-in and retain only minimal identity in the session."""
+    if google is None:
+        return redirect(url_for("index"))
+
+    token = google.authorize_access_token()
+    user = token.get("userinfo", {})
+    if not user.get("sub") or not user.get("email"):
+        return jsonify({"error": "google_identity_unavailable"}), 400
+
+    # Keep Google account identity separate from anonymous wellness records.
+    session["google_user"] = {
+        "google_sub": user["sub"],
+        "email": user["email"],
+        "name": user.get("name", ""),
+        "picture": user.get("picture", ""),
+    }
+    return redirect(url_for("index"))
+
+
+@app.route("/auth/logout")
+def google_logout():
+    """Sign out of this app without signing the user out of Google globally."""
+    session.pop("google_user", None)
+    return redirect(url_for("index"))
 
 
 @app.route("/api/register", methods=["POST"])

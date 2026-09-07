@@ -1,0 +1,37 @@
+:root { color-scheme: dark; font-family: 'Manrope', sans-serif; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; color: #f7f5ff; background: #0c0b12; }
+.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(390px, .9fr); }
+.auth-intro { position: relative; overflow: hidden; padding: 48px clamp(42px, 7vw, 116px); display: flex; flex-direction: column; background: radial-gradient(circle at 18% 12%, rgba(167,139,250,.31), transparent 23rem), radial-gradient(circle at 73% 78%, rgba(109,74,217,.26), transparent 25rem), #171321; }
+.auth-intro::after { content: ''; position: absolute; width: 420px; height: 420px; right: -160px; bottom: -170px; border: 1px solid rgba(212,196,255,.15); border-radius: 50%; box-shadow: 0 0 0 55px rgba(212,196,255,.035), 0 0 0 110px rgba(212,196,255,.025); }
+.brand { display: inline-flex; align-items: center; gap: 10px; width: fit-content; color: #fff; font-weight: 800; font-size: 16px; letter-spacing: -.4px; text-decoration: none; }
+.brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; background: linear-gradient(135deg, #c4b5fd, #7c5ad9); box-shadow: 0 8px 22px rgba(124,90,217,.35); font-size: 26px; line-height: 1; }
+.intro-copy { max-width: 500px; margin: auto 0; position: relative; z-index: 1; }
+.eyebrow { color: #c4b5fd; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+h1 { margin: 14px 0 18px; font-size: clamp(42px, 5vw, 66px); line-height: 1.08; letter-spacing: -3px; }
+.intro-copy p { max-width: 410px; color: #c5bed7; font-size: 16px; line-height: 1.7; }
+.privacy-note { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; max-width: 400px; color: #c6bfd6; font-size: 12px; line-height: 1.55; }
+.privacy-note span { color: #c4b5fd; font-size: 18px; }
+.privacy-note p { margin: 0; }
+.auth-panel { padding: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0c0b12; }
+.auth-card { width: min(100%, 390px); padding: 34px; border: 1px solid rgba(220,210,255,.13); border-radius: 24px; background: linear-gradient(145deg, rgba(43,37,61,.86), rgba(23,20,33,.86)); box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+h2 { margin: 10px 0 10px; font-size: 28px; letter-spacing: -1.15px; }
+.auth-copy { margin: 0 0 26px; color: #beb7cf; font-size: 13px; line-height: 1.65; }
+.google-button { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 50px; border: 1px solid rgba(220,210,255,.19); border-radius: 14px; background: #fff; color: #282137; font-size: 13px; font-weight: 800; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease; }
+.google-button:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.22); }
+.google-button svg { width: 20px; height: 20px; }
+.terms { margin: 18px 0 0; color: #91899f; font-size: 10px; line-height: 1.55; text-align: center; }
+.back-link { width: min(100%, 390px); margin-top: 20px; color: #a79eb9; font-size: 12px; text-align: center; text-decoration: none; }
+.back-link:hover { color: #d4c8f9; }
+.mobile-brand { display: none; }
+@media (max-width: 760px) { .auth-shell { display: block; } .auth-intro { display: none; } .auth-panel { min-height: 100vh; padding: 28px 20px; align-items: stretch; } .mobile-brand { display: inline-flex; margin-bottom: auto; } .auth-card { margin: auto; padding: 28px 22px; } .back-link { margin: auto auto 0; } }
+
+/* Match the existing AegisMind phone-frame dimensions at every viewport size. */
+body { display: flex; justify-content: center; align-items: flex-start; }
+.auth-shell { display: block; width: 100%; max-width: 440px; min-height: 100dvh; background: radial-gradient(circle at 14% 0%, rgba(167,139,250,.18), transparent 20rem), #0c0b12; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.auth-intro { display: none; }
+.auth-panel { width: 100%; min-height: 100dvh; padding: 24px 20px; align-items: stretch; justify-content: flex-start; }
+.mobile-brand { display: inline-flex; margin-bottom: auto; }
+.auth-card { width: 100%; max-width: none; margin: auto 0; padding: 28px 22px; border-radius: 20px; }
+.back-link { width: 100%; margin: auto auto 4px; }
+@media (min-width: 441px) { .auth-shell { border-left: 1px solid rgba(220,210,255,.1); border-right: 1px solid rgba(220,210,255,.1); } }

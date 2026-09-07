@@ -9,10 +9,10 @@
   <meta name="description" content="AegisMind — AI-Powered Mental Health Monitoring & Consoling Companion" />
   <title>AegisMind</title>
 
-  <!-- Google Fonts: Inter + JetBrains Mono -->
+  <!-- Google Fonts: Inter + Manrope + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="/static/css/mobile.css" />
@@ -178,6 +178,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <a class="header-login-link" href="/login">Sign in</a>
       <button class="info-btn" onclick="openGlossaryModal()" title="Terms Glossary">?</button>
       <button class="lang-toggle" id="lang-btn" onclick="toggleLanguage()">हिन्दी</button>
       <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme">
@@ -490,6 +491,11 @@
       <div class="section-heading" style="margin-top:0;">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         <span data-i18n="forum_title">Community Support</span>
+      </div>
+
+      <div class="community-tabs" role="tablist" aria-label="Community language">
+        <button class="community-tab active" id="community-tab-en" type="button" role="tab" aria-selected="true" onclick="setForumLanguage('en')">English</button>
+        <button class="community-tab" id="community-tab-hi" type="button" role="tab" aria-selected="false" onclick="setForumLanguage('hi')">हिंदी</button>
       </div>
 
       <div class="card" style="margin-bottom:12px;">

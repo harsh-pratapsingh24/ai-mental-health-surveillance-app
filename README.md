@@ -69,6 +69,21 @@ Visit `http://localhost:5000`
 | `/api/counselor/review/<id>` | POST | Mark case reviewed |
 | `/api/counselor/jitsi/<id>` | GET | Get Jitsi consultation link |
 | `/api/profile/<token>` | GET | User profile & stats |
+| `/health` | GET | Liveness/readiness configuration signal (no sensitive data) |
+
+## Production integration boundary
+
+The application retains its existing UI and starts in an in-memory demo mode. Before a production deployment, configure the placeholders in `.env.example` and replace the in-memory repository with PostgreSQL persistence:
+
+- `DATABASE_URL` — PostgreSQL persistence target (repository adapter still required)
+- `REDIS_URL` and `CELERY_BROKER_URL` — broker for moving companion-provider calls off Flask request workers
+- `COUNSELOR_API_KEY` — enables the `X-Counselor-Key` protection on counselor endpoints; replace this with authenticated clinician roles in the production portal
+- `API_BASE_URL` — optional API gateway/backend origin for a separately hosted frontend
+- `TELE_MANAS_API_URL`, `TWILIO_*`, and `SENTRY_DSN` — deliberate webhook, notification, and observability integration points
+
+The public API has input bounds, request-size limits, structured request logs without bodies, response security headers, and local per-IP rate limits. The in-memory rate limiter is appropriate only for a single demo process; use Redis-backed limiting when horizontally scaling.
+
+If `API_BASE_URL` is a different origin, proxy it through the same site or configure narrowly scoped CORS at the API gateway. The Flask app intentionally does not enable wildcard CORS for wellness data.
 
 ## Architecture
 

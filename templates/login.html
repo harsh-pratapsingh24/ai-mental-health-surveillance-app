@@ -2,46 +2,278 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0c0b12" />
-  <title>Sign in | AegisMind</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#08080C" />
+  <title>Sign In | AegisMind</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/mobile.css" />
   <link rel="stylesheet" href="/static/css/login.css" />
 </head>
 <body>
-  <main class="auth-shell">
-    <section class="auth-intro" aria-label="AegisMind introduction">
-      <a class="brand" href="/" aria-label="Back to AegisMind">
-        <span class="brand-mark">⌁</span>
-        <span>AegisMind</span>
-      </a>
-      <div class="intro-copy">
-        <span class="eyebrow">PRIVATE WELLNESS SPACE</span>
-        <h1>A quieter place<br />to check in.</h1>
-        <p>Track your wellbeing, reflect safely, and find support when you need it.</p>
-      </div>
-      <div class="privacy-note">
-        <span>✦</span>
-        <p>Your Google sign-in is kept separate from your anonymous wellness check-ins.</p>
-      </div>
-    </section>
 
-    <section class="auth-panel">
-      <a class="mobile-brand brand" href="/" aria-label="Back to AegisMind"><span class="brand-mark">⌁</span><span>AegisMind</span></a>
-      <div class="auth-card">
-        <span class="eyebrow">WELCOME</span>
-        <h2>Continue to AegisMind</h2>
-        <p class="auth-copy">Sign in or create your account with Google to keep your preferences available across sessions.</p>
-        <a class="google-button" href="/auth/google">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.94 2.94v2.52h3.15c1.84-1.7 2.9-4.2 2.9-7.29Z"/><path fill="#34A853" d="M12 21.75c2.62 0 4.82-.87 6.43-2.35l-3.15-2.52c-.87.58-1.99.92-3.28.92-2.53 0-4.67-1.7-5.44-4.01H3.31v2.6A9.72 9.72 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.56 13.79A5.86 5.86 0 0 1 6.25 12c0-.62.11-1.22.31-1.79v-2.6H3.31A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06 1.06 4.39l3.25-2.6Z"/><path fill="#EA4335" d="M12 6.2c1.4 0 2.65.48 3.64 1.42l2.73-2.73C16.81 3.43 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.69 5.36l3.25 2.6C7.33 7.9 9.47 6.2 12 6.2Z"/></svg>
-          Continue with Google
-        </a>
-        <p class="terms">By continuing, you agree to our terms of use and acknowledge our privacy practices.</p>
+<!-- Ambient Atmospheric Orbs -->
+<div class="bg-atmosphere" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- App Shell (Exact same dimensions as index.html: max-width 440px) -->
+<div id="app-shell" class="auth-app-shell">
+
+  <!-- Header -->
+  <header class="app-header" role="banner">
+    <a href="/" class="header-brand" aria-label="AegisMind Home" style="text-decoration:none;">
+      <div class="brand-logo" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <a class="back-link" href="/">← Continue anonymously</a>
-    </section>
+      <div class="brand-text">
+        <span class="brand-name">AegisMind</span>
+        <span class="brand-tagline">Clinical AI Companion</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <a href="/" class="btn-back-nav" aria-label="Back to dashboard">
+        <span>← App</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Auth Container -->
+  <main class="auth-main-content">
+
+    <!-- Auth Hero -->
+    <div class="auth-hero stagger-children">
+      <div class="auth-shield-wrap animate-in">
+        <div class="auth-shield-glow"></div>
+        <div class="auth-shield-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+      </div>
+      <h1 class="auth-title animate-in animate-in-delay-1">Welcome Back</h1>
+      <p class="auth-subtitle animate-in animate-in-delay-2">Access your private wellness sanctuary, check-in history, and AI listener.</p>
+    </div>
+
+    <!-- Error Notice if redirected with error -->
+    <div id="auth-alert" class="auth-notice" style="display:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="auth-alert-text">Google OAuth is not configured in this environment. You can sign in instantly using an Anonymous Session Token.</span>
+    </div>
+
+    <!-- Auth Card -->
+    <div class="auth-card glass-card">
+      <!-- Mode Tabs -->
+      <div class="auth-tabs" role="tablist">
+        <button class="auth-tab active" id="tab-restore" onclick="switchAuthTab('restore')" role="tab" aria-selected="true">
+          Restore Token
+        </button>
+        <button class="auth-tab" id="tab-new" onclick="switchAuthTab('new')" role="tab" aria-selected="false">
+          New Session
+        </button>
+      </div>
+
+      <!-- Tab 1: Restore Session by Token / Alias -->
+      <div id="panel-restore" class="auth-tab-panel active">
+        <p class="auth-input-hint">Enter your 16-character Aegis Token or Alias to restore your check-ins and history.</p>
+        
+        <form onsubmit="handleTokenLogin(event)">
+          <div class="form-group">
+            <label for="login-token-input" class="form-label">Session Token or Alias</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="text" id="login-token-input" class="auth-input" placeholder="e.g. 9B4F1A28C7E0D356" autocomplete="off" autocorrect="off" autocapitalize="characters" required />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full" id="btn-submit-token">
+            <span>Sign In to Session</span>
+          </button>
+        </form>
+
+        <div class="token-helper-text">
+          <span>Forgot token?</span> You can create a fresh anonymous session anytime without personal data.
+        </div>
+      </div>
+
+      <!-- Tab 2: Instant New Anonymous Session -->
+      <div id="panel-new" class="auth-tab-panel" style="display:none;">
+        <p class="auth-input-hint">Generate a brand new zero-knowledge session protected by end-to-end anonymity.</p>
+        
+        <div class="consent-reminder-box">
+          <div class="consent-point">
+            <span class="point-bullet">✦</span>
+            <span>No email, phone number, or password required.</span>
+          </div>
+          <div class="consent-point">
+            <span class="point-bullet">✦</span>
+            <span>You receive an anonymous pseudonym and clinical token.</span>
+          </div>
+          <div class="consent-point">
+            <span class="point-bullet">✦</span>
+            <span>Journals and voice clarity scores are processed privately.</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full" id="btn-create-session" onclick="handleNewSession()">
+          <span>Create Private Session</span>
+        </button>
+      </div>
+
+      <!-- Divider -->
+      <div class="auth-divider">
+        <span>or</span>
+      </div>
+
+      <!-- Google OAuth Button -->
+      <a class="btn-google-auth" href="/auth/google" id="google-auth-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.94 2.94v2.52h3.15c1.84-1.7 2.9-4.2 2.9-7.29Z"/><path fill="#34A853" d="M12 21.75c2.62 0 4.82-.87 6.43-2.35l-3.15-2.52c-.87.58-1.99.92-3.28.92-2.53 0-4.67-1.7-5.44-4.01H3.31v2.6A9.72 9.72 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.56 13.79A5.86 5.86 0 0 1 6.25 12c0-.62.11-1.22.31-1.79v-2.6H3.31A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06 1.06 4.39l3.25-2.6Z"/><path fill="#EA4335" d="M12 6.2c1.4 0 2.65.48 3.64 1.42l2.73-2.73C16.81 3.43 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.69 5.36l3.25 2.6C7.33 7.9 9.47 6.2 12 6.2Z"/></svg>
+        <span>Continue with Google</span>
+      </a>
+      <p class="google-disclaimer">Google sign-in is kept strictly isolated from clinical distress scores.</p>
+    </div>
+
+    <!-- Security & Privacy Pills -->
+    <div class="privacy-badges-grid">
+      <div class="privacy-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Zero-Knowledge</span>
+      </div>
+      <div class="privacy-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>No Data Retention</span>
+      </div>
+      <div class="privacy-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>100% Anonymous</span>
+      </div>
+    </div>
+
+    <!-- Back to home link -->
+    <div class="auth-footer-nav">
+      <a href="/" class="btn-cancel-auth">← Return to AegisMind Companion</a>
+    </div>
+
   </main>
+</div>
+
+<script>
+  // Check for error query params
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('error') === 'google_not_configured') {
+    const alertEl = document.getElementById('auth-alert');
+    if (alertEl) alertEl.style.display = 'flex';
+  }
+
+  function showToast(text, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = text;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  }
+
+  function switchAuthTab(tab) {
+    document.getElementById('tab-restore').classList.toggle('active', tab === 'restore');
+    document.getElementById('tab-new').classList.toggle('active', tab === 'new');
+    document.getElementById('tab-restore').setAttribute('aria-selected', tab === 'restore');
+    document.getElementById('tab-new').setAttribute('aria-selected', tab === 'new');
+
+    const panelRestore = document.getElementById('panel-restore');
+    const panelNew = document.getElementById('panel-new');
+
+    if (tab === 'restore') {
+      panelRestore.style.display = 'block';
+      panelNew.style.display = 'none';
+    } else {
+      panelRestore.style.display = 'none';
+      panelNew.style.display = 'block';
+    }
+  }
+
+  // Pre-fill existing token if available in localStorage
+  document.addEventListener('DOMContentLoaded', () => {
+    const existing = localStorage.getItem('aegis_token');
+    if (existing) {
+      const input = document.getElementById('login-token-input');
+      if (input && !input.value) input.value = existing;
+    }
+  });
+
+  async function handleTokenLogin(e) {
+    e.preventDefault();
+    const input = document.getElementById('login-token-input');
+    const token = input.value.trim().toUpperCase();
+    if (!token) return;
+
+    const btn = document.getElementById('btn-submit-token');
+    btn.disabled = true;
+    btn.innerHTML = '<span>Verifying...</span>';
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Unable to sign in with that token');
+      }
+
+      localStorage.setItem('aegis_token', data.token);
+      localStorage.setItem('aegis_alias', data.alias);
+      localStorage.setItem('aegis_consent', 'true');
+
+      showToast('Session restored! Redirecting...', 'success', 2000);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 800);
+    } catch (err) {
+      showToast(err.message, 'error', 4000);
+      btn.disabled = false;
+      btn.innerHTML = '<span>Sign In to Session</span>';
+    }
+  }
+
+  async function handleNewSession() {
+    const btn = document.getElementById('btn-create-session');
+    btn.disabled = true;
+    btn.innerHTML = '<span>Creating Session...</span>';
+
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consent: true })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Unable to create session');
+      }
+
+      localStorage.setItem('aegis_token', data.token);
+      localStorage.setItem('aegis_alias', data.alias);
+      localStorage.setItem('aegis_consent', 'true');
+
+      showToast('New session created! Redirecting...', 'success', 2000);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 800);
+    } catch (err) {
+      showToast(err.message, 'error', 4000);
+      btn.disabled = false;
+      btn.innerHTML = '<span>Create Private Session</span>';
+    }
+  }
+</script>
 </body>
 </html>

@@ -1,279 +1,381 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AegisMind — Secure Access</title>
+  
   <meta name="theme-color" content="#08080C" />
-  <title>Sign In | AegisMind</title>
+  <meta name="description" content="Secure, zero-knowledge access to your AegisMind wellness sanctuary." />
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@600;800&display=swap" rel="stylesheet" />
+  
+  <!-- Styles -->
   <link rel="stylesheet" href="/static/css/mobile.css" />
   <link rel="stylesheet" href="/static/css/login.css" />
 </head>
-<body>
+<body class="theme-dark">
 
-<!-- Ambient Atmospheric Orbs -->
-<div class="bg-atmosphere" aria-hidden="true">
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-</div>
+  <div class="bg-atmosphere" aria-hidden="true">
+    <div class="glow-orb" style="top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%);"></div>
+    <div class="glow-orb" style="bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);"></div>
+  </div>
 
-<!-- Toast Container -->
-<div id="toast-container"></div>
+  <div id="toast-container"></div>
 
-<!-- App Shell (Exact same dimensions as index.html: max-width 440px) -->
-<div id="app-shell" class="auth-app-shell">
+  <!-- QUICK EXIT BUTTON -->
+  <button id="quick-exit-btn" class="quick-exit-btn" onclick="quickExit()" aria-label="Quick Exit">✕ Exit</button>
 
-  <!-- Header -->
-  <header class="app-header" role="banner">
-    <a href="/" class="header-brand" aria-label="AegisMind Home" style="text-decoration:none;">
-      <div class="brand-logo" aria-hidden="true">
+  <div class="auth-app-shell">
+    
+    <!-- Top Nav -->
+    <header class="header-nav">
+      <a href="/" class="header-brand-link" aria-label="Go to home">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <div class="brand-text">
-        <span class="brand-name">AegisMind</span>
-        <span class="brand-tagline">Clinical AI Companion</span>
-      </div>
-    </a>
-    <div class="header-actions">
-      <a href="/" class="btn-back-nav" aria-label="Back to dashboard">
-        <span>← App</span>
+        <span>AegisMind</span>
       </a>
-    </div>
-  </header>
+      <div class="header-actions">
+        <button id="login-lang-toggle" class="lang-toggle-btn" onclick="loginToggleLang()">हिन्दी</button>
+        <a href="/" class="header-back-link">← App</a>
+      </div>
+    </header>
 
-  <!-- Main Auth Container -->
-  <main class="auth-main-content">
-
-    <!-- Auth Hero -->
-    <div class="auth-hero stagger-children">
-      <div class="auth-shield-wrap animate-in">
-        <div class="auth-shield-glow"></div>
-        <div class="auth-shield-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <main class="auth-main-content">
+      <div class="auth-hero">
+        <div class="hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
         </div>
-      </div>
-      <h1 class="auth-title animate-in animate-in-delay-1">Welcome Back</h1>
-      <p class="auth-subtitle animate-in animate-in-delay-2">Access your private wellness sanctuary, check-in history, and AI listener.</p>
-    </div>
-
-    <!-- Error Notice if redirected with error -->
-    <div id="auth-alert" class="auth-notice" style="display:none;">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span id="auth-alert-text">Google OAuth is not configured in this environment. You can sign in instantly using an Anonymous Session Token.</span>
-    </div>
-
-    <!-- Auth Card -->
-    <div class="auth-card glass-card">
-      <!-- Mode Tabs -->
-      <div class="auth-tabs" role="tablist">
-        <button class="auth-tab active" id="tab-restore" onclick="switchAuthTab('restore')" role="tab" aria-selected="true">
-          Restore Token
-        </button>
-        <button class="auth-tab" id="tab-new" onclick="switchAuthTab('new')" role="tab" aria-selected="false">
-          New Session
-        </button>
+        <h1 class="hero-title" id="auth-hero-title">Welcome Back</h1>
+        <p class="hero-subtitle" id="auth-hero-subtitle">Access your private wellness sanctuary, check-in history, and AI listener.</p>
       </div>
 
-      <!-- Tab 1: Restore Session by Token / Alias -->
-      <div id="panel-restore" class="auth-tab-panel active">
-        <p class="auth-input-hint">Enter your 16-character Aegis Token or Alias to restore your check-ins and history.</p>
+      <div class="auth-card">
         
-        <form onsubmit="handleTokenLogin(event)">
-          <div class="form-group">
-            <label for="login-token-input" class="form-label">Session Token or Alias</label>
-            <div class="input-with-icon">
-              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="text" id="login-token-input" class="auth-input" placeholder="e.g. 9B4F1A28C7E0D356" autocomplete="off" autocorrect="off" autocapitalize="characters" required />
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" id="tab-signin" role="tab" aria-selected="true" onclick="loginSwitchTab('signin')">Sign In</button>
+          <button class="auth-tab" id="tab-signup" role="tab" aria-selected="false" onclick="loginSwitchTab('signup')">Sign Up</button>
+        </div>
+
+        <!-- SIGN IN PANEL -->
+        <div id="panel-signin" class="auth-panel active" role="tabpanel">
+          <p id="signin-hint" class="auth-input-hint">Enter your 16-character Aegis Token and local PIN to restore your session.</p>
+          
+          <form onsubmit="handleLocalSignIn(event)" class="auth-form">
+            <div class="input-group">
+              <label for="signin-token-input" class="auth-label" id="signin-token-label-el">Session Token</label>
+              <input type="text" id="signin-token-input" class="auth-input mono-input" placeholder="e.g. 9B4F1A28C7E0D356" autocomplete="off" autocapitalize="characters" maxlength="16" required spellcheck="false" />
+            </div>
+
+            <div class="input-group" style="margin-top: 16px;">
+              <label for="signin-pin-input" class="auth-label" id="signin-pin-label-el">Local PIN (4 digits)</label>
+              <input type="password" id="signin-pin-input" class="auth-input mono-input" placeholder="••••" inputmode="numeric" maxlength="4" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full mt-4" id="btn-signin">Sign In to Session</button>
+          </form>
+
+          <p class="token-helper-text" id="signin-helper-text" style="margin-top: 20px;">Forgot token? Create a new anonymous session in the Sign Up tab.</p>
+        </div>
+
+        <!-- SIGN UP PANEL -->
+        <div id="panel-signup" class="auth-panel" role="tabpanel" style="display:none;">
+          <p id="signup-hint" class="auth-input-hint" style="margin-bottom: 16px;">Create a zero-knowledge anonymous session. No email or phone required.</p>
+          
+          <!-- DPDP Warning Box -->
+          <div class="warning-box">
+            <div class="warning-box-icon">⚠️</div>
+            <div class="warning-box-body">
+              <strong id="dpdp-title">DPDP Act 2023 — Privacy Notice</strong>
+              <span id="dpdp-text">Your passkey is generated locally and never sent to any server. If you lose it, it cannot be recovered by anyone — including AegisMind.</span>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary w-full" id="btn-submit-token">
-            <span>Sign In to Session</span>
-          </button>
-        </form>
+          <!-- Generate Section -->
+          <div id="generate-section">
+            <button class="btn btn-outline w-full" id="btn-generate-passkey" onclick="generateAnonymousPasskey()">🔑 Generate Anonymous Passkey</button>
+          </div>
 
-        <div class="token-helper-text">
-          <span>Forgot token?</span> You can create a fresh anonymous session anytime without personal data.
+          <!-- Reveal Panel (Hidden initially) -->
+          <div id="passkey-reveal-panel" class="passkey-reveal" style="display:none;">
+            <label class="your-passkey-label" id="your-passkey-label">Your Anonymous Passkey:</label>
+            <div class="generated-token-display">
+              <span id="display-generated-token"></span>
+              <button class="copy-token-btn" onclick="copyGeneratedToken()" title="Copy Token">📋</button>
+            </div>
+            
+            <label class="set-pin-label" id="set-pin-label">Set a 4-digit PIN to protect your session:</label>
+            <div class="pin-row">
+              <input class="pin-digit" id="pin-d1" maxlength="1" type="tel" inputmode="numeric"/>
+              <input class="pin-digit" id="pin-d2" maxlength="1" type="tel" inputmode="numeric"/>
+              <input class="pin-digit" id="pin-d3" maxlength="1" type="tel" inputmode="numeric"/>
+              <input class="pin-digit" id="pin-d4" maxlength="1" type="tel" inputmode="numeric"/>
+            </div>
+            
+            <button class="btn btn-primary w-full" style="margin-top:20px;" id="btn-create-account" onclick="handleLocalSignUp()">Create My Safe Space</button>
+          </div>
+          
+          <p class="token-helper-text" id="regenerate-note" style="display:none; margin-top:16px;">
+            <span id="regenerate-note-inner">Changed your mind?</span> 
+            <button class="link-btn" onclick="resetSignupFlow()">Generate a new passkey</button>
+          </p>
+        </div>
+
+      </div>
+
+      <div class="privacy-badges" style="margin-top:28px;">
+        <div class="privacy-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span data-i18n="badge_encrypted">E2E Encrypted</span>
+        </div>
+        <div class="privacy-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          <span data-i18n="badge_no_pii">No PII Stored</span>
+        </div>
+        <div class="privacy-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span data-i18n="badge_hipaa">DPDP Compliant</span>
         </div>
       </div>
+    </main>
 
-      <!-- Tab 2: Instant New Anonymous Session -->
-      <div id="panel-new" class="auth-tab-panel" style="display:none;">
-        <p class="auth-input-hint">Generate a brand new zero-knowledge session protected by end-to-end anonymity.</p>
-        
-        <div class="consent-reminder-box">
-          <div class="consent-point">
-            <span class="point-bullet">✦</span>
-            <span>No email, phone number, or password required.</span>
-          </div>
-          <div class="consent-point">
-            <span class="point-bullet">✦</span>
-            <span>You receive an anonymous pseudonym and clinical token.</span>
-          </div>
-          <div class="consent-point">
-            <span class="point-bullet">✦</span>
-            <span>Journals and voice clarity scores are processed privately.</span>
-          </div>
-        </div>
+  </div>
 
-        <button class="btn btn-primary w-full" id="btn-create-session" onclick="handleNewSession()">
-          <span>Create Private Session</span>
-        </button>
-      </div>
+  <script>
+    // ─── LOGIN PAGE STATE ───
+    let loginLang = localStorage.getItem('aegis_lang') || 'en';
+    let _generatedToken = null;
+    let _generatedAlias = null;
 
-      <!-- Divider -->
-      <div class="auth-divider">
-        <span>or</span>
-      </div>
+    const LOGIN_STRINGS = {
+      en: {
+        'auth-hero-title': 'Welcome Back',
+        'auth-hero-subtitle': 'Access your private wellness sanctuary, check-in history, and AI listener.',
+        'tab-signin': 'Sign In',
+        'tab-signup': 'Sign Up',
+        'signin-hint': 'Enter your 16-character Aegis Token and local PIN to restore your session.',
+        'btn-signin': 'Sign In to Session',
+        'signin-helper-text': 'Forgot token? Create a new anonymous session in the Sign Up tab.',
+        'signup-hint': 'Create a zero-knowledge anonymous session. No email or phone required.',
+        'dpdp-title': 'DPDP Act 2023 — Privacy Notice',
+        'dpdp-text': 'Your passkey is generated locally and never sent to any server. If you lose it, it cannot be recovered by anyone — including AegisMind.',
+        'btn-generate-passkey': '🔑 Generate Anonymous Passkey',
+        'your-passkey-label': 'Your Anonymous Passkey:',
+        'set-pin-label': 'Set a 4-digit PIN to protect your session:',
+        'btn-create-account': 'Create My Safe Space',
+        'regenerate-note-inner': 'Changed your mind?',
+        'signin-token-label-el': 'Session Token',
+        'signin-pin-label-el': 'Local PIN (4 digits)',
+        'login-lang-toggle': 'हिन्दी',
+      },
+      hi: {
+        'auth-hero-title': 'वापसी पर स्वागत',
+        'auth-hero-subtitle': 'अपने निजी स्वास्थ्य कक्ष, चेक-इन इतिहास और AI श्रोता तक पहुँचें।',
+        'tab-signin': 'साइन इन',
+        'tab-signup': 'नया खाता',
+        'signin-hint': 'अपना 16-अक्षर का एजिस टोकन और स्थानीय PIN दर्ज करें।',
+        'btn-signin': 'सत्र में साइन इन',
+        'signin-helper-text': 'टोकन भूल गए? साइन अप टैब में नया गुमनाम सत्र बनाएं।',
+        'signup-hint': 'शून्य-ज्ञान गुमनाम सत्र बनाएं। कोई ईमेल या फ़ोन आवश्यक नहीं।',
+        'dpdp-title': 'DPDP अधिनियम 2023 — गोपनीयता सूचना',
+        'dpdp-text': 'आपका पासकी स्थानीय रूप से बनाया जाता है और किसी भी सर्वर पर नहीं भेजा जाता। यदि आप इसे खो देते हैं तो इसे पुनः प्राप्त नहीं किया जा सकता।',
+        'btn-generate-passkey': '🔑 गुमनाम पासकी बनाएं',
+        'your-passkey-label': 'आपका गुमनाम पासकी:',
+        'set-pin-label': 'अपने सत्र की सुरक्षा के लिए 4-अंकीय PIN सेट करें:',
+        'btn-create-account': 'मेरी सुरक्षित जगह बनाएं',
+        'regenerate-note-inner': 'बदलना चाहते हैं?',
+        'signin-token-label-el': 'सत्र टोकन',
+        'signin-pin-label-el': 'स्थानीय PIN (4 अंक)',
+        'login-lang-toggle': 'English',
+      },
+    };
 
-      <!-- Google OAuth Button -->
-      <a class="btn-google-auth" href="/auth/google" id="google-auth-btn">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.94 2.94v2.52h3.15c1.84-1.7 2.9-4.2 2.9-7.29Z"/><path fill="#34A853" d="M12 21.75c2.62 0 4.82-.87 6.43-2.35l-3.15-2.52c-.87.58-1.99.92-3.28.92-2.53 0-4.67-1.7-5.44-4.01H3.31v2.6A9.72 9.72 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.56 13.79A5.86 5.86 0 0 1 6.25 12c0-.62.11-1.22.31-1.79v-2.6H3.31A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06 1.06 4.39l3.25-2.6Z"/><path fill="#EA4335" d="M12 6.2c1.4 0 2.65.48 3.64 1.42l2.73-2.73C16.81 3.43 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.69 5.36l3.25 2.6C7.33 7.9 9.47 6.2 12 6.2Z"/></svg>
-        <span>Continue with Google</span>
-      </a>
-      <p class="google-disclaimer">Google sign-in is kept strictly isolated from clinical distress scores.</p>
-    </div>
-
-    <!-- Security & Privacy Pills -->
-    <div class="privacy-badges-grid">
-      <div class="privacy-badge">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span>Zero-Knowledge</span>
-      </div>
-      <div class="privacy-badge">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        <span>No Data Retention</span>
-      </div>
-      <div class="privacy-badge">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>100% Anonymous</span>
-      </div>
-    </div>
-
-    <!-- Back to home link -->
-    <div class="auth-footer-nav">
-      <a href="/" class="btn-cancel-auth">← Return to AegisMind Companion</a>
-    </div>
-
-  </main>
-</div>
-
-<script>
-  // Check for error query params
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('error') === 'google_not_configured') {
-    const alertEl = document.getElementById('auth-alert');
-    if (alertEl) alertEl.style.display = 'flex';
-  }
-
-  function showToast(text, type = 'info', duration = 3000) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = text;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), duration);
-  }
-
-  function switchAuthTab(tab) {
-    document.getElementById('tab-restore').classList.toggle('active', tab === 'restore');
-    document.getElementById('tab-new').classList.toggle('active', tab === 'new');
-    document.getElementById('tab-restore').setAttribute('aria-selected', tab === 'restore');
-    document.getElementById('tab-new').setAttribute('aria-selected', tab === 'new');
-
-    const panelRestore = document.getElementById('panel-restore');
-    const panelNew = document.getElementById('panel-new');
-
-    if (tab === 'restore') {
-      panelRestore.style.display = 'block';
-      panelNew.style.display = 'none';
-    } else {
-      panelRestore.style.display = 'none';
-      panelNew.style.display = 'block';
-    }
-  }
-
-  // Pre-fill existing token if available in localStorage
-  document.addEventListener('DOMContentLoaded', () => {
-    const existing = localStorage.getItem('aegis_token');
-    if (existing) {
-      const input = document.getElementById('login-token-input');
-      if (input && !input.value) input.value = existing;
-    }
-  });
-
-  async function handleTokenLogin(e) {
-    e.preventDefault();
-    const input = document.getElementById('login-token-input');
-    const token = input.value.trim().toUpperCase();
-    if (!token) return;
-
-    const btn = document.getElementById('btn-submit-token');
-    btn.disabled = true;
-    btn.innerHTML = '<span>Verifying...</span>';
-
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+    function loginApplyStrings() {
+      const s = LOGIN_STRINGS[loginLang];
+      if (!s) return;
+      Object.entries(s).forEach(([id, text]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
       });
-      const data = await res.json();
+      // Update placeholders
+      document.documentElement.lang = loginLang;
+      localStorage.setItem('aegis_lang', loginLang);
+    }
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Unable to sign in with that token');
+    function loginToggleLang() {
+      loginLang = loginLang === 'en' ? 'hi' : 'en';
+      loginApplyStrings();
+      showToast(loginLang === 'hi' ? 'भाषा: हिन्दी' : 'Language: English', 'info', 2000);
+    }
+
+    function loginSwitchTab(tab) {
+      ['signin', 'signup'].forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        const panel = document.getElementById('panel-' + t);
+        if (btn) {
+          btn.classList.toggle('active', t === tab);
+          btn.setAttribute('aria-selected', String(t === tab));
+        }
+        if (panel) panel.style.display = t === tab ? 'block' : 'none';
+      });
+    }
+
+    function generateAnonymousPasskey() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // unambiguous
+      let token = '';
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      for (let i = 0; i < 16; i++) token += chars[bytes[i] % chars.length];
+      
+      const adj = ['Quiet','Gentle','Steady','Calm','Warm','Clear','Soft','Bright','Still','Kind','Serene','Hopeful'];
+      const noun = ['Willow','River','Stone','Ember','Harbor','Dawn','Meadow','Lantern','Compass','Anchor','Candle','Shore'];
+      _generatedAlias = adj[Math.floor(Math.random() * adj.length)] + noun[Math.floor(Math.random() * noun.length)] + (Math.floor(Math.random() * 90) + 10);
+      _generatedToken = token;
+
+      document.getElementById('display-generated-token').textContent = token;
+      document.getElementById('generate-section').style.display = 'none';
+      document.getElementById('passkey-reveal-panel').style.display = 'block';
+      document.getElementById('regenerate-note').style.display = 'block';
+      
+      setTimeout(() => document.getElementById('pin-d1').focus(), 100);
+      showToast(loginLang === 'hi' ? 'पासकी तैयार! अब PIN सेट करें।' : 'Passkey generated! Now set your PIN.', 'success', 3500);
+    }
+
+    function copyGeneratedToken() {
+      if (!_generatedToken) return;
+      navigator.clipboard.writeText(_generatedToken).then(() => {
+        showToast(loginLang === 'hi' ? 'टोकन कॉपी किया गया!' : 'Token copied to clipboard!', 'info');
+      });
+    }
+
+    function getPinValue() {
+      return ['pin-d1','pin-d2','pin-d3','pin-d4'].map(id => document.getElementById(id)?.value || '').join('');
+    }
+
+    function handleLocalSignUp() {
+      const pin = getPinValue();
+      if (!_generatedToken) {
+        showToast(loginLang === 'hi' ? 'पहले पासकी बनाएं' : 'Please generate a passkey first', 'warning');
+        return;
+      }
+      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+        showToast(loginLang === 'hi' ? 'कृपया 4-अंकीय PIN दर्ज करें' : 'Please enter a 4-digit numeric PIN', 'warning');
+        document.getElementById('pin-d1').focus();
+        return;
+      }
+      const btn = document.getElementById('btn-create-account');
+      btn.disabled = true;
+      btn.textContent = loginLang === 'hi' ? 'सहेजा जा रहा है...' : 'Creating...';
+      
+      const credentials = { token: _generatedToken, pin, alias: _generatedAlias };
+      localStorage.setItem('aegis_credentials', JSON.stringify(credentials));
+      localStorage.setItem('aegis_token', _generatedToken);
+      localStorage.setItem('aegis_alias', _generatedAlias);
+      localStorage.setItem('aegis_consent', 'true');
+      
+      showToast(loginLang === 'hi' ? 'सत्र बनाया गया! पुनर्निर्देशित किया जा रहा है...' : 'Session created! Redirecting...', 'success', 2000);
+      setTimeout(() => { window.location.href = '/'; }, 900);
+    }
+
+    function handleLocalSignIn(e) {
+      e.preventDefault();
+      const tokenInput = document.getElementById('signin-token-input');
+      const pinInput = document.getElementById('signin-pin-input');
+      const token = tokenInput.value.trim().toUpperCase();
+      const pin = pinInput.value.trim();
+      
+      if (!token || token.length < 8) {
+        showToast(loginLang === 'hi' ? 'कृपया मान्य टोकन दर्ज करें' : 'Please enter a valid token', 'error');
+        tokenInput.focus();
+        return;
+      }
+      if (!pin || pin.length !== 4) {
+        showToast(loginLang === 'hi' ? 'कृपया 4-अंकीय PIN दर्ज करें' : 'Please enter your 4-digit PIN', 'error');
+        pinInput.focus();
+        return;
       }
 
-      localStorage.setItem('aegis_token', data.token);
-      localStorage.setItem('aegis_alias', data.alias);
-      localStorage.setItem('aegis_consent', 'true');
+      const btn = document.getElementById('btn-signin');
+      btn.disabled = true;
+      btn.textContent = loginLang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...';
 
-      showToast('Session restored! Redirecting...', 'success', 2000);
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 800);
-    } catch (err) {
-      showToast(err.message, 'error', 4000);
-      btn.disabled = false;
-      btn.innerHTML = '<span>Sign In to Session</span>';
-    }
-  }
-
-  async function handleNewSession() {
-    const btn = document.getElementById('btn-create-session');
-    btn.disabled = true;
-    btn.innerHTML = '<span>Creating Session...</span>';
-
-    try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consent: true })
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Unable to create session');
+      try {
+        const stored = JSON.parse(localStorage.getItem('aegis_credentials') || 'null');
+        if (stored && stored.token === token && stored.pin === pin) {
+          localStorage.setItem('aegis_token', stored.token);
+          localStorage.setItem('aegis_alias', stored.alias);
+          localStorage.setItem('aegis_consent', 'true');
+          showToast(loginLang === 'hi' ? 'सत्र बहाल किया गया!' : 'Session restored!', 'success', 2000);
+          setTimeout(() => { window.location.href = '/'; }, 800);
+        } else if (!stored && token) {
+          // Legacy: accept any stored token if no credentials object exists
+          const legacyToken = localStorage.getItem('aegis_token');
+          if (legacyToken && legacyToken === token) {
+            localStorage.setItem('aegis_consent', 'true');
+            showToast(loginLang === 'hi' ? 'लीगेसी सत्र बहाल किया गया!' : 'Legacy session restored!', 'success', 2000);
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          } else {
+            throw new Error(loginLang === 'hi' ? 'टोकन या PIN गलत है।' : 'Incorrect token or PIN.');
+          }
+        } else {
+          throw new Error(loginLang === 'hi' ? 'टोकन या PIN गलत है।' : 'Incorrect token or PIN.');
+        }
+      } catch (err) {
+        showToast(err.message, 'error', 4000);
+        btn.disabled = false;
+        btn.textContent = LOGIN_STRINGS[loginLang]['btn-signin'];
       }
-
-      localStorage.setItem('aegis_token', data.token);
-      localStorage.setItem('aegis_alias', data.alias);
-      localStorage.setItem('aegis_consent', 'true');
-
-      showToast('New session created! Redirecting...', 'success', 2000);
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 800);
-    } catch (err) {
-      showToast(err.message, 'error', 4000);
-      btn.disabled = false;
-      btn.innerHTML = '<span>Create Private Session</span>';
     }
-  }
-</script>
+
+    function resetSignupFlow() {
+      _generatedToken = null;
+      _generatedAlias = null;
+      document.getElementById('generate-section').style.display = 'block';
+      document.getElementById('passkey-reveal-panel').style.display = 'none';
+      document.getElementById('regenerate-note').style.display = 'none';
+      ['pin-d1','pin-d2','pin-d3','pin-d4'].forEach(id => { 
+        const el = document.getElementById(id); 
+        if (el) el.value = ''; 
+      });
+    }
+
+    function quickExit() {
+      window.location.replace('https://weather.com');
+    }
+
+    function showToast(text, type = 'info', duration = 3000) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = text;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), duration);
+    }
+
+    // Auto-advance PIN inputs
+    document.addEventListener('DOMContentLoaded', () => {
+      const pinIds = ['pin-d1','pin-d2','pin-d3','pin-d4'];
+      pinIds.forEach((id, idx, arr) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+          el.value = el.value.replace(/\D/g, '').slice(0, 1);
+          if (el.value && idx < arr.length - 1) document.getElementById(arr[idx + 1])?.focus();
+        });
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Backspace' && !el.value && idx > 0) document.getElementById(arr[idx - 1])?.focus();
+        });
+      });
+
+      // Pre-fill existing token if available
+      const existing = localStorage.getItem('aegis_token');
+      const signinInput = document.getElementById('signin-token-input');
+      if (existing && signinInput && !signinInput.value) signinInput.value = existing;
+      
+      loginApplyStrings();
+    });
+  </script>
 </body>
 </html>

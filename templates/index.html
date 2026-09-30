@@ -38,6 +38,23 @@
 <div id="toast-container"></div>
 <div id="crisis-lock-overlay" class="crisis-lock-overlay"></div>
 
+<!-- QUICK EXIT BUTTON — always visible, immediate privacy escape -->
+<button id="quick-exit-btn" onclick="quickExit()" aria-label="Quick Exit — redirects to a neutral page immediately">✕ Exit</button>
+
+<!-- SIT WITH ME — FULLSCREEN IMMERSIVE OVERLAY -->
+<div id="swm-fullscreen-overlay" role="dialog" aria-label="Sit With Me — calming presence mode" aria-modal="true">
+  <!-- Breathing Ring -->
+  <div class="swm-breathing-ring" id="swm-fs-ring-wrap">
+    <div class="swm-ring-outer" id="swm-ring-outer"></div>
+    <div class="swm-ring-inner" id="swm-ring-inner"></div>
+    <div class="swm-ring-label" id="swm-fs-breath-phase">Breathe</div>
+  </div>
+  <!-- Affirmation -->
+  <p class="swm-fs-affirmation" id="swm-fs-message">I'm right here with you.</p>
+  <!-- Exit -->
+  <button class="swm-exit-btn" id="btn-swm-fs-exit" onclick="stopSitWithMe()">I'm okay now ✦</button>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════
      CONSENT ONBOARDING MODAL
 ═══════════════════════════════════════════════════════════ -->
@@ -600,30 +617,37 @@
           </p>
 
           <!-- TIPP Skill 1: Temperature / Dive Reflex -->
-          <div class="tipp-skill-card" onclick="startTippTimer('dive', 30)">
+          <div class="tipp-skill-card" id="tipp-card-dive">
             <div class="tipp-header">
               <span class="tipp-title">1. Temperature: Dive Reflex</span>
-              <span class="tipp-badge" id="timer-badge-dive">30s Timer</span>
+              <span class="tipp-badge" id="timer-badge-dive">30s</span>
             </div>
             <p class="tipp-desc">Splash cold water on your eyes and cheeks, or hold an ice cube. Activates the vagus nerve and slows heart rate within seconds.</p>
+            <div class="tipp-countdown-display" id="tipp-countdown-dive">00:30</div>
+            <div class="tipp-progress-bar"><div class="tipp-progress-fill" id="tipp-progress-dive"></div></div>
+            <button class="tipp-action-btn" id="btn-tipp-dive" onclick="startTippTimer('dive', 30)">Start 30s Timer</button>
           </div>
 
           <!-- TIPP Skill 2: Intense Exercise Burst -->
-          <div class="tipp-skill-card" onclick="startTippTimer('exercise', 60)">
+          <div class="tipp-skill-card" id="tipp-card-exercise">
             <div class="tipp-header">
               <span class="tipp-title">2. Intense Exercise: Adrenaline Burn</span>
-              <span class="tipp-badge" id="timer-badge-exercise">60s Timer</span>
+              <span class="tipp-badge" id="timer-badge-exercise">60s</span>
             </div>
             <p class="tipp-desc">Jump in place, do rapid wall push-ups, or shake your arms briskly for 60 seconds to metabolize sudden adrenaline spikes.</p>
+            <div class="tipp-countdown-display" id="tipp-countdown-exercise">01:00</div>
+            <div class="tipp-progress-bar"><div class="tipp-progress-fill" id="tipp-progress-exercise"></div></div>
+            <button class="tipp-action-btn" id="btn-tipp-exercise" onclick="startTippTimer('exercise', 60)">Start 60s Timer</button>
           </div>
 
           <!-- TIPP Skill 3: Paced Box Breathing -->
-          <div class="tipp-skill-card" onclick="showCrisisModal()">
+          <div class="tipp-skill-card">
             <div class="tipp-header">
               <span class="tipp-title">3. Paced Breathing (4-7-8 &amp; Box)</span>
               <span class="tipp-badge">Interactive</span>
             </div>
             <p class="tipp-desc">Lengthening your exhalation signals the amygdala that danger has passed. Launch our rhythmic breathing pacer.</p>
+            <button class="tipp-action-btn" onclick="showCrisisModal()">Launch Breathing Pacer</button>
           </div>
         </div>
       </div>
@@ -642,6 +666,7 @@
           </p>
 
           <div class="thought-box">
+            <div class="mist-particle-overlay" id="mist-particle-canvas"></div>
             <div class="mist-cloud-target" id="mist-cloud-display">
               "Type an intrusive or painful thought below..."
             </div>
@@ -668,10 +693,16 @@
             Cross your arms over your chest like butterfly wings. Follow the alternating rhythm below by tapping your left and right shoulders in sync.
           </p>
 
+          <div class="bilateral-body-guide" id="bilateral-body-guide">
+            <div class="shoulder-target" id="shoulder-left"></div>
+            <div class="bilateral-body-icon">👤</div>
+            <div class="shoulder-target" id="shoulder-right"></div>
+          </div>
           <div class="bilateral-container">
             <div class="tapping-pad" id="tap-pad-left">
               <span style="font-size:18px;">🦋</span>
               <span class="tapping-label">Left</span>
+              <span class="bilateral-direction-label">TAP L</span>
             </div>
             <div style="text-align:center;">
               <button class="btn btn-outline btn-sm" id="btn-toggle-tapping" onclick="toggleBilateralPacer()">
@@ -681,6 +712,7 @@
             <div class="tapping-pad" id="tap-pad-right">
               <span style="font-size:18px;">🦋</span>
               <span class="tapping-label">Right</span>
+              <span class="bilateral-direction-label">TAP R</span>
             </div>
           </div>
         </div>

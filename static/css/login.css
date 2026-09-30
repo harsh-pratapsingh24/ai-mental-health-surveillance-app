@@ -367,3 +367,205 @@
   0%, 100% { transform: scale(1); opacity: 0.6; }
   50% { transform: scale(1.1); opacity: 0.9; }
 }
+
+/* ============================================================
+   NEW AUTH MODULE ADDITIONS — DPDP-Compliant Anonymous Auth
+   ============================================================ */
+
+/* Quick Exit Button — fixed top-right, high-contrast */
+.quick-exit-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 99999;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  border-radius: var(--r-full, 999px);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 12px rgba(239,68,68,0.4);
+}
+.quick-exit-btn:hover {
+  background: rgba(220, 38, 38, 0.95);
+  transform: scale(1.04);
+}
+.quick-exit-btn:active {
+  transform: scale(0.97);
+}
+
+/* Language Toggle Button */
+.lang-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: var(--r-full, 999px);
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  color: #A5B4FC;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-right: 6px;
+}
+.lang-toggle-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  color: #FFFFFF;
+}
+
+/* DPDP Warning Box */
+.warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  margin-bottom: 16px;
+}
+.warning-box-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 1px;
+}
+.warning-box-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.warning-box-body strong {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #FBBF24;
+  display: block;
+}
+.warning-box-body span {
+  font-size: 11px;
+  color: rgba(251, 191, 36, 0.8);
+  line-height: 1.5;
+}
+
+/* Generated Token Display */
+.generated-token-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.generated-token-display span {
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  font-weight: 600;
+  color: #C4B5FD;
+  letter-spacing: 0.1em;
+  flex: 1;
+  word-break: break-all;
+}
+.copy-token-btn {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.copy-token-btn:hover {
+  background: rgba(168, 85, 247, 0.3);
+}
+
+/* Passkey Reveal Panel */
+.passkey-reveal {
+  animation: fadeSlideUp 0.4s var(--ease-out, ease) both;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* PIN Row */
+.pin-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.pin-digit {
+  width: 52px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #FFFFFF);
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  caret-color: var(--brand-primary, #A855F7);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pin-digit:focus {
+  outline: none;
+  border-color: var(--brand-primary, #A855F7);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+}
+[data-theme="light"] .pin-digit {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+  color: #111;
+}
+
+/* Link-style button */
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--brand-accent, #A855F7);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.link-btn:hover {
+  color: #C4B5FD;
+}
+
+/* Set-PIN label */
+.set-pin-label {
+  font-size: 11.5px;
+  color: var(--text-secondary, #9CA3AF);
+  margin-bottom: 10px;
+  display: block;
+  text-align: center;
+}
+
+/* Your passkey label */
+.your-passkey-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted, #6B7280);
+  margin-bottom: 6px;
+  display: block;
+}

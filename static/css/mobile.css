@@ -1423,3 +1423,323 @@ body {
   transition: opacity 0.3s;
 }
 .crisis-lock-overlay.active { opacity: 1; pointer-events: auto; }
+
+/* ============================================================
+   CALMING SANCTUARY UPGRADES & QUICK EXIT BUTTON
+   Additions: SWM Fullscreen, Breathing Ring, Mist Particles,
+   Enhanced Tapping, TIPP Progress, Quick Exit
+   ============================================================ */
+
+/* ---- QUICK EXIT BUTTON (global, fixed) ---- */
+#quick-exit-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 99999;
+  padding: 6px 13px;
+  background: rgba(239, 68, 68, 0.88);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  border-radius: 999px;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 12px rgba(239,68,68,0.35);
+  font-family: var(--font-sans);
+}
+#quick-exit-btn:hover {
+  background: rgba(220, 38, 38, 0.98);
+  transform: scale(1.05);
+  box-shadow: 0 4px 18px rgba(239,68,68,0.5);
+}
+#quick-exit-btn:active { transform: scale(0.97); }
+
+/* ---- SIT WITH ME FULLSCREEN OVERLAY ---- */
+#swm-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9800;
+  background: radial-gradient(ellipse at center, #0D0A1A 0%, #08080C 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  gap: 32px;
+}
+#swm-fullscreen-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Breathing ring */
+.swm-breathing-ring {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.swm-ring-outer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(168, 85, 247, 0.4);
+  animation: swmRingIdle 6s ease-in-out infinite;
+}
+.swm-ring-inner {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.6) 0%, rgba(139, 92, 246, 0.2) 60%, transparent 100%);
+  animation: swmRingIdle 6s ease-in-out infinite;
+  box-shadow: 0 0 40px rgba(167, 139, 250, 0.4), 0 0 80px rgba(139, 92, 246, 0.15);
+}
+.swm-ring-label {
+  position: absolute;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(196, 181, 253, 0.9);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  animation: swmRingIdle 6s ease-in-out infinite;
+}
+@keyframes swmRingIdle {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.swm-ring-outer.inhale,
+.swm-ring-inner.inhale { animation: swmInhale 4s ease-in both; }
+.swm-ring-outer.exhale,
+.swm-ring-inner.exhale { animation: swmExhale 8s ease-out both; }
+.swm-ring-outer.hold,
+.swm-ring-inner.hold { animation: swmHold 7s linear both; }
+
+@keyframes swmInhale {
+  from { transform: scale(0.85); opacity: 0.55; }
+  to   { transform: scale(1.18); opacity: 1; }
+}
+@keyframes swmExhale {
+  from { transform: scale(1.18); opacity: 1; }
+  to   { transform: scale(0.85); opacity: 0.55; }
+}
+@keyframes swmHold {
+  from, to { transform: scale(1.18); opacity: 1; }
+}
+
+/* SWM affirmation */
+.swm-fs-affirmation {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  max-width: 340px;
+  line-height: 1.55;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease;
+}
+.swm-fs-breath-phase {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(196, 181, 253, 0.7);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  min-height: 20px;
+}
+.swm-exit-btn {
+  padding: 10px 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-sans);
+}
+.swm-exit-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: #FFFFFF;
+}
+
+/* ---- MIST PARTICLE DISSOLVE ---- */
+.mist-particle-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 5;
+}
+.thought-box {
+  position: relative;
+}
+.mist-particle {
+  position: absolute;
+  font-family: var(--font-mono, monospace);
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(220, 200, 255, 0.9);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  animation: mistDrift var(--drift-dur, 1.4s) var(--ease-out, ease-out) var(--drift-delay, 0s) both;
+}
+@keyframes mistDrift {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1); filter: blur(0px); }
+  40%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(var(--drift-x, 20px), var(--drift-y, -40px)) scale(0.4); filter: blur(6px); }
+}
+
+/* ---- ENHANCED TAPPING PADS ---- */
+.tapping-pad {
+  position: relative;
+  overflow: visible !important;
+}
+.tapping-pad::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(168, 85, 247, 0);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  transform: scale(0.9);
+  pointer-events: none;
+}
+.tapping-pad.active::after {
+  border-color: rgba(168, 85, 247, 0.8);
+  transform: scale(1);
+  animation: tapPulse 1.1s ease-in-out;
+}
+@keyframes tapPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.6); }
+  50%  { box-shadow: 0 0 0 16px rgba(168, 85, 247, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+}
+.tapping-pad.active {
+  background: rgba(168, 85, 247, 0.25) !important;
+  border-color: rgba(168, 85, 247, 0.7) !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.5) !important;
+}
+
+.bilateral-direction-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand-accent, #A855F7);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.tapping-pad.active .bilateral-direction-label {
+  opacity: 1;
+}
+
+.bilateral-body-guide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-bottom: 16px;
+  padding: 16px 0 8px;
+}
+.shoulder-target {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(168, 85, 247, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.shoulder-target.pulse {
+  border-color: rgba(168, 85, 247, 0.9);
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.5);
+  animation: shoulderPulse 0.5s ease-out;
+}
+@keyframes shoulderPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.6); }
+  100% { box-shadow: 0 0 0 18px rgba(168, 85, 247, 0); }
+}
+.bilateral-body-icon {
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+/* TIPP card active state */
+.tipp-skill-card.timer-running {
+  border-color: rgba(168, 85, 247, 0.5) !important;
+  background: rgba(168, 85, 247, 0.07) !important;
+}
+.tipp-countdown-display {
+  font-family: var(--font-mono, monospace);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--brand-secondary, #A78BFA);
+  text-align: center;
+  margin: 10px 0 4px;
+  letter-spacing: 0.04em;
+  display: none;
+}
+.tipp-progress-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+  display: none;
+}
+.tipp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7C3AED, #A855F7);
+  border-radius: 999px;
+  transition: width 1s linear;
+  width: 100%;
+}
+.tipp-skill-card.timer-running .tipp-countdown-display,
+.tipp-skill-card.timer-running .tipp-progress-bar {
+  display: block;
+}
+.tipp-action-btn {
+  margin-top: 10px;
+  padding: 7px 16px;
+  border-radius: 10px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: var(--brand-accent, #A855F7);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
+}
+.tipp-action-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+}
+.tipp-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

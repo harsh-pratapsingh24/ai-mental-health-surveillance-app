@@ -274,13 +274,13 @@
           </div>
         </div>
 
-        <div class="toolkit-card animate-in animate-in-delay-1" onclick="navigateTo('sanctuary')">
+        <div class="toolkit-card animate-in animate-in-delay-1" onclick="navigateTo('sanctuary'); switchSanctuaryTab('sit');">
           <div class="toolkit-icon-wrap lavender">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div>
-            <div class="toolkit-title" data-i18n="tool_sanctuary">Calm Sanctuary</div>
-            <div class="toolkit-sub" data-i18n="tool_sanctuary_sub">Coping &amp; solace</div>
+            <div class="toolkit-title">Sit With Me</div>
+            <div class="toolkit-sub">Silent presence</div>
           </div>
         </div>
 
@@ -561,14 +561,33 @@
 
       <!-- Sanctuary Navigation Sub-Tabs -->
       <div class="sanctuary-tabs" role="tablist">
-        <button class="sanctuary-tab active" id="tab-sanc-tipp" onclick="switchSanctuaryTab('tipp')">Panic Relief (TIPP)</button>
-        <button class="sanctuary-tab" id="tab-sanc-defusion" onclick="switchSanctuaryTab('defusion')">Thought Defusion</button>
-        <button class="sanctuary-tab" id="tab-sanc-tapping" onclick="switchSanctuaryTab('tapping')">Bilateral Tapping</button>
-        <button class="sanctuary-tab" id="tab-sanc-guides" onclick="switchSanctuaryTab('guides')">Consoling Guides</button>
+        <button class="sanctuary-tab active" id="tab-sanc-sit" onclick="switchSanctuaryTab('sit')">Sit With Me</button>
+        <button class="sanctuary-tab" id="tab-sanc-tipp" onclick="switchSanctuaryTab('tipp')">TIPP Relief</button>
+        <button class="sanctuary-tab" id="tab-sanc-defusion" onclick="switchSanctuaryTab('defusion')">Defusion</button>
+        <button class="sanctuary-tab" id="tab-sanc-tapping" onclick="switchSanctuaryTab('tapping')">Tapping</button>
+        <button class="sanctuary-tab" id="tab-sanc-guides" onclick="switchSanctuaryTab('guides')">Guides</button>
+      </div>
+
+      <!-- Sub-Tab 0: Sit With Me Mode -->
+      <div id="sanc-sit" class="sanctuary-content">
+        <div class="card" style="text-align:center; padding: 40px 20px; background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(30,30,45,0.4) 100%);">
+          <div style="width: 120px; height: 120px; margin: 0 auto 30px; position: relative;">
+            <div class="sit-with-me-orb" id="swm-orb" style="width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, var(--brand-secondary) 0%, transparent 70%); opacity: 0.6; transition: transform 4s ease-in-out, opacity 4s ease-in-out; animation: gentlePulse 8s infinite alternate;"></div>
+          </div>
+          
+          <div id="swm-message" style="font-size: 18px; font-weight: 500; color: var(--text-primary); min-height: 60px; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity 1s ease-in-out; margin-bottom: 20px;">
+            I'm right here with you.
+          </div>
+          
+          <button class="btn btn-outline" id="btn-swm-start" onclick="toggleSitWithMe()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Begin "Sit With Me"
+          </button>
+        </div>
       </div>
 
       <!-- Sub-Tab 1: TIPP Acute Distress Skills -->
-      <div id="sanc-tipp" class="sanctuary-content">
+      <div id="sanc-tipp" class="sanctuary-content" style="display:none;">
         <div class="card">
           <div class="card-title">
             <div class="card-title-left">

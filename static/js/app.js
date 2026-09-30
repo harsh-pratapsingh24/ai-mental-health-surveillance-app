@@ -1375,7 +1375,7 @@ function updateEmotionalWeather() {
 // CALMING SANCTUARY & CONSOLING HUB CONTROLLER
 // ────────────────────────────────────────────────────────────────
 function switchSanctuaryTab(tab) {
-  const tabs = ["tipp", "defusion", "tapping", "guides"];
+  const tabs = ["sit", "tipp", "defusion", "tapping", "guides"];
   tabs.forEach((tId) => {
     const tabBtn = $(`tab-sanc-${tId}`);
     const content = $(`sanc-${tId}`);
@@ -1385,6 +1385,254 @@ function switchSanctuaryTab(tab) {
       if (tId === tab) content.classList.add("active");
     }
   });
+  // Stop Sit With Me if navigating away
+  if (tab !== "sit" && sitWithMeActive) {
+    stopSitWithMe();
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// SIT WITH ME — Silent Presence Companion Mode
+// No advice. No CBT. Just a warm, quiet presence that breathes
+// with you, shows gentle messages, and plays soft ambient sound.
+// ────────────────────────────────────────────────────────────────
+let sitWithMeActive = false;
+let swmMessageInterval = null;
+let swmAudioCtx = null;
+let swmOscNodes = [];
+let swmPhaseIndex = 0;
+let swmBreathInterval = null;
+
+const SWM_MESSAGES_EN = [
+  "I'm right here with you.",
+  "You don't have to say anything.",
+  "Just breathe. I'm not going anywhere.",
+  "This moment is yours. No rush.",
+  "You are safe right now.",
+  "It's okay to just sit here for a while.",
+  "I'm here. You're not alone.",
+  "Nothing to fix. Nothing to solve. Just be.",
+  "Let the world wait. You come first.",
+  "Your breathing is enough. You are enough.",
+  "Take all the time you need.",
+  "I'll stay as long as you need me.",
+  "Feel your feet on the ground. You're here.",
+  "One breath at a time. That's all.",
+  "The storm passes. I'll sit with you until it does.",
+];
+
+const SWM_MESSAGES_HI = [
+  "मैं यहीं हूँ, आपके साथ।",
+  "कुछ कहने की ज़रूरत नहीं।",
+  "बस साँस लीजिए। मैं कहीं नहीं जा रहा।",
+  "यह पल आपका है। कोई जल्दी नहीं।",
+  "आप अभी सुरक्षित हैं।",
+  "बस यहाँ बैठे रहना काफ़ी है।",
+  "मैं हूँ। आप अकेले नहीं हैं।",
+  "कुछ ठीक करने की ज़रूरत नहीं। बस रहिए।",
+  "दुनिया को रुकने दीजिए। पहले आप।",
+  "आपकी साँसें काफ़ी हैं। आप काफ़ी हैं।",
+  "जितना समय चाहें, लीजिए।",
+  "जब तक ज़रूरत हो, मैं यहीं रहूँगा।",
+  "अपने पैरों को ज़मीन पर महसूस करें। आप यहाँ हैं।",
+  "एक साँस। बस इतना ही।",
+  "तूफ़ान गुज़र जाएगा। मैं यहाँ बैठा रहूँगा।",
+];
+
+function toggleSitWithMe() {
+  if (sitWithMeActive) {
+    stopSitWithMe();
+  } else {
+    startSitWithMe();
+  }
+}
+
+function startSitWithMe() {
+  sitWithMeActive = true;
+  const btn = $("btn-swm-start");
+  const orb = $("swm-orb");
+  if (btn) btn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right: 8px;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    I'm okay now`;
+
+  // Intensify orb glow
+  if (orb) {
+    orb.style.animation = "gentlePulse 6s infinite alternate, swmBreathSync 4s ease-in-out infinite";
+    orb.style.boxShadow = "0 0 60px rgba(168, 85, 247, 0.7), 0 0 120px rgba(192, 132, 252, 0.3)";
+  }
+
+  // Start gentle ambient drone (binaural-like warm pad)
+  startSwmAmbient();
+
+  // Start rotating messages
+  swmPhaseIndex = 0;
+  showSwmMessage();
+  swmMessageInterval = setInterval(showSwmMessage, 10000);
+
+  // Start breath sync pulse on the orb
+  startSwmBreathSync();
+
+  showToast(
+    State.lang === "hi"
+      ? "मैं आपके साथ बैठा हूँ। बस साँस लीजिए।"
+      : "I'm sitting with you now. Just breathe.",
+    "info",
+    4000
+  );
+}
+
+function stopSitWithMe() {
+  sitWithMeActive = false;
+  const btn = $("btn-swm-start");
+  const orb = $("swm-orb");
+  const msgEl = $("swm-message");
+
+  if (btn) btn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Begin "Sit With Me"`;
+
+  if (orb) {
+    orb.style.animation = "gentlePulse 8s infinite alternate";
+    orb.style.boxShadow = "0 0 30px rgba(168, 85, 247, 0.5)";
+  }
+
+  if (msgEl) {
+    msgEl.style.opacity = "0";
+    setTimeout(() => {
+      if (msgEl) {
+        msgEl.textContent = State.lang === "hi"
+          ? "मुझे खुशी है कि आप यहाँ आए। ख्याल रखें। 💜"
+          : "I'm glad you came. Take care of yourself. 💜";
+        msgEl.style.opacity = "1";
+      }
+    }, 600);
+  }
+
+  clearInterval(swmMessageInterval);
+  swmMessageInterval = null;
+  stopSwmAmbient();
+  stopSwmBreathSync();
+
+  showToast(
+    State.lang === "hi"
+      ? "आपने खुद को समय दिया — यह बहुत बड़ी बात है।"
+      : "You gave yourself time — that takes real strength.",
+    "success",
+    5000
+  );
+}
+
+function showSwmMessage() {
+  const msgEl = $("swm-message");
+  if (!msgEl) return;
+  const messages = State.lang === "hi" ? SWM_MESSAGES_HI : SWM_MESSAGES_EN;
+
+  // Fade out
+  msgEl.style.opacity = "0";
+  setTimeout(() => {
+    msgEl.textContent = messages[swmPhaseIndex % messages.length];
+    msgEl.style.opacity = "1";
+    swmPhaseIndex++;
+  }, 800);
+}
+
+function startSwmAmbient() {
+  try {
+    swmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = swmAudioCtx.currentTime;
+
+    // Warm pad: stacked soft sine tones at calming frequencies
+    const freqs = [174, 285, 396]; // Solfeggio healing frequencies
+    swmOscNodes = [];
+
+    freqs.forEach((freq, i) => {
+      const osc = swmAudioCtx.createOscillator();
+      const gain = swmAudioCtx.createGain();
+      const filter = swmAudioCtx.createBiquadFilter();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+
+      // Very gentle LFO-like detuning for warmth
+      osc.detune.setValueAtTime(0, now);
+      osc.detune.linearRampToValueAtTime(5 * (i + 1), now + 4);
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(600, now);
+      filter.Q.setValueAtTime(0.7, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.025, now + 3);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(swmAudioCtx.destination);
+      osc.start(now);
+
+      swmOscNodes.push({ osc, gain });
+    });
+  } catch {
+    /* silent if audio blocked */
+  }
+}
+
+function stopSwmAmbient() {
+  if (swmAudioCtx && swmOscNodes.length) {
+    const now = swmAudioCtx.currentTime;
+    swmOscNodes.forEach(({ osc, gain }) => {
+      try {
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2);
+        osc.stop(now + 2.5);
+      } catch { /* already stopped */ }
+    });
+    swmOscNodes = [];
+    setTimeout(() => {
+      try { swmAudioCtx.close(); } catch {}
+      swmAudioCtx = null;
+    }, 3000);
+  }
+}
+
+function startSwmBreathSync() {
+  const orb = $("swm-orb");
+  if (!orb) return;
+
+  // 4-7-8 pacing via CSS transforms on the orb
+  let phase = "in"; // in(4s) → hold(7s) → out(8s)
+  function breathCycle() {
+    if (!sitWithMeActive) return;
+    if (phase === "in") {
+      orb.style.transform = "scale(1.2)";
+      orb.style.opacity = "0.9";
+      orb.style.transition = "transform 4s ease-in-out, opacity 4s ease-in-out";
+      phase = "hold";
+      swmBreathInterval = setTimeout(breathCycle, 4000);
+    } else if (phase === "hold") {
+      // Hold — no change, just wait
+      phase = "out";
+      swmBreathInterval = setTimeout(breathCycle, 7000);
+    } else {
+      orb.style.transform = "scale(0.85)";
+      orb.style.opacity = "0.5";
+      orb.style.transition = "transform 8s ease-in-out, opacity 8s ease-in-out";
+      phase = "in";
+      swmBreathInterval = setTimeout(breathCycle, 8000);
+    }
+  }
+  breathCycle();
+}
+
+function stopSwmBreathSync() {
+  if (swmBreathInterval) {
+    clearTimeout(swmBreathInterval);
+    swmBreathInterval = null;
+  }
+  const orb = $("swm-orb");
+  if (orb) {
+    orb.style.transform = "scale(1)";
+    orb.style.opacity = "0.6";
+    orb.style.transition = "transform 2s ease-in-out, opacity 2s ease-in-out";
+  }
 }
 
 function releaseThoughtIntoMist() {

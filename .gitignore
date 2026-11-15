@@ -1,5 +1,6 @@
 .env
 .env *
+SUPABASE_SETUP_GUIDE.md
 .env.local
 .venv/
 __pycache__/

@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/mobile.css" />
   <link rel="stylesheet" href="/static/css/login.css" />
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -55,30 +57,79 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
       </div>
-      <h1 class="auth-title animate-in animate-in-delay-1">Welcome Back</h1>
+      <h1 class="auth-title animate-in animate-in-delay-1">Welcome to AegisMind</h1>
       <p class="auth-subtitle animate-in animate-in-delay-2">Access your private wellness sanctuary, check-in history, and AI listener.</p>
     </div>
 
     <!-- Error Notice if redirected with error -->
     <div id="auth-alert" class="auth-notice" style="display:none;">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span id="auth-alert-text">Google OAuth is not configured in this environment. You can sign in instantly using an Anonymous Session Token.</span>
+      <span id="auth-alert-text">Authentication message.</span>
+    </div>
+
+    <!-- Missing Config Warning -->
+    <div id="config-warning" class="auth-notice" style="display:none;background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#fca5a5;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Supabase is not configured in .env. Please set SUPABASE_URL and SUPABASE_ANON_KEY.</span>
     </div>
 
     <!-- Auth Card -->
     <div class="auth-card glass-card">
       <!-- Mode Tabs -->
       <div class="auth-tabs" role="tablist">
-        <button class="auth-tab active" id="tab-restore" onclick="switchAuthTab('restore')" role="tab" aria-selected="true">
+        <button class="auth-tab active" id="tab-supabase" onclick="switchAuthTab('supabase')" role="tab" aria-selected="true">
+          Account
+        </button>
+        <button class="auth-tab" id="tab-restore" onclick="switchAuthTab('restore')" role="tab" aria-selected="false">
           Restore Token
         </button>
         <button class="auth-tab" id="tab-new" onclick="switchAuthTab('new')" role="tab" aria-selected="false">
-          New Session
+          Anonymous
         </button>
       </div>
 
-      <!-- Tab 1: Restore Session by Token / Alias -->
-      <div id="panel-restore" class="auth-tab-panel active">
+      <!-- Tab 1: Supabase Email/Password -->
+      <div id="panel-supabase" class="auth-tab-panel active">
+        <p class="auth-input-hint" id="supabase-hint">Sign in to your persistent AegisMind account.</p>
+        
+        <form id="supabase-auth-form" onsubmit="handleSupabaseEmailAuth(event)">
+          <div class="form-group">
+            <label for="auth-email-input" class="form-label">Email Address</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="auth-email-input" class="auth-input" placeholder="you@example.com" autocomplete="email" required />
+            </div>
+          </div>
+
+          <div class="form-group" id="group-alias" style="display:none;">
+            <label for="auth-alias-input" class="form-label">Pseudonym / Alias</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input type="text" id="auth-alias-input" class="auth-input" placeholder="e.g. GentleWillow" autocomplete="nickname" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="auth-password-input" class="form-label">Password</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="auth-password-input" class="auth-input" placeholder="••••••••" autocomplete="current-password" minlength="6" required />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full" id="btn-submit-supabase">
+            <span id="btn-submit-supabase-text">Sign In</span>
+          </button>
+        </form>
+
+        <div style="display:flex;justify-content:center;margin-top:12px;font-size:12px;color:var(--text-secondary);">
+          <span id="toggle-auth-prompt">Don't have an account?</span>
+          <button type="button" onclick="toggleAuthMode()" id="toggle-auth-btn" style="background:none;border:none;color:var(--brand-secondary);cursor:pointer;font-weight:600;margin-left:6px;font-size:12px;text-decoration:underline;">Create Account</button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Restore Session by Token / Alias -->
+      <div id="panel-restore" class="auth-tab-panel" style="display:none;">
         <p class="auth-input-hint">Enter your 16-character Aegis Token or Alias to restore your check-ins and history.</p>
         
         <form onsubmit="handleTokenLogin(event)">
@@ -100,7 +151,7 @@
         </div>
       </div>
 
-      <!-- Tab 2: Instant New Anonymous Session -->
+      <!-- Tab 3: Instant New Anonymous Session -->
       <div id="panel-new" class="auth-tab-panel" style="display:none;">
         <p class="auth-input-hint">Generate a brand new zero-knowledge session protected by end-to-end anonymity.</p>
         
@@ -130,11 +181,11 @@
       </div>
 
       <!-- Google OAuth Button -->
-      <a class="btn-google-auth" href="/auth/google" id="google-auth-btn">
+      <button type="button" class="btn-google-auth" id="google-auth-btn" onclick="handleGoogleSignIn()">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.94 2.94v2.52h3.15c1.84-1.7 2.9-4.2 2.9-7.29Z"/><path fill="#34A853" d="M12 21.75c2.62 0 4.82-.87 6.43-2.35l-3.15-2.52c-.87.58-1.99.92-3.28.92-2.53 0-4.67-1.7-5.44-4.01H3.31v2.6A9.72 9.72 0 0 0 12 21.75Z"/><path fill="#FBBC05" d="M6.56 13.79A5.86 5.86 0 0 1 6.25 12c0-.62.11-1.22.31-1.79v-2.6H3.31A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06 1.06 4.39l3.25-2.6Z"/><path fill="#EA4335" d="M12 6.2c1.4 0 2.65.48 3.64 1.42l2.73-2.73C16.81 3.43 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.69 5.36l3.25 2.6C7.33 7.9 9.47 6.2 12 6.2Z"/></svg>
-        <span>Continue with Google</span>
-      </a>
-      <p class="google-disclaimer">Google sign-in is kept strictly isolated from clinical distress scores.</p>
+        <span id="google-btn-text">Continue with Google</span>
+      </button>
+      <p class="google-disclaimer">Google sign-in is managed securely via Supabase Authentication.</p>
     </div>
 
     <!-- Security & Privacy Pills -->
@@ -162,11 +213,36 @@
 </div>
 
 <script>
-  // Check for error query params
+  window.SUPABASE_URL = {{ supabase_url|tojson }};
+  window.SUPABASE_ANON_KEY = {{ supabase_anon_key|tojson }};
+  window.GOOGLE_CLIENT_ID = {{ google_client_id|tojson }};
+
+  let supabaseClient = null;
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY && typeof window.supabase !== 'undefined') {
+    try {
+      supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    } catch (e) {
+      console.warn("Failed to initialize Supabase JS client:", e);
+    }
+  }
+
+  let authMode = 'signin'; // 'signin' or 'signup'
+
+  // Check URL params
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('error') === 'google_not_configured') {
+  if (urlParams.get('error')) {
     const alertEl = document.getElementById('auth-alert');
-    if (alertEl) alertEl.style.display = 'flex';
+    const alertText = document.getElementById('auth-alert-text');
+    if (alertEl && alertText) {
+      alertText.textContent = decodeURIComponent(urlParams.get('error'));
+      alertEl.style.display = 'flex';
+    }
+  }
+
+  // Check Supabase config
+  if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+    const warn = document.getElementById('config-warning');
+    if (warn) warn.style.display = 'flex';
   }
 
   function showToast(text, type = 'info', duration = 3000) {
@@ -180,31 +256,184 @@
   }
 
   function switchAuthTab(tab) {
-    document.getElementById('tab-restore').classList.toggle('active', tab === 'restore');
-    document.getElementById('tab-new').classList.toggle('active', tab === 'new');
-    document.getElementById('tab-restore').setAttribute('aria-selected', tab === 'restore');
-    document.getElementById('tab-new').setAttribute('aria-selected', tab === 'new');
+    ['supabase', 'restore', 'new'].forEach(t => {
+      const btn = document.getElementById('tab-' + t);
+      const panel = document.getElementById('panel-' + t);
+      if (btn) {
+        btn.classList.toggle('active', t === tab);
+        btn.setAttribute('aria-selected', t === tab);
+      }
+      if (panel) {
+        panel.style.display = (t === tab) ? 'block' : 'none';
+      }
+    });
+  }
 
-    const panelRestore = document.getElementById('panel-restore');
-    const panelNew = document.getElementById('panel-new');
+  function toggleAuthMode() {
+    authMode = (authMode === 'signin') ? 'signup' : 'signin';
+    const hint = document.getElementById('supabase-hint');
+    const btnText = document.getElementById('btn-submit-supabase-text');
+    const prompt = document.getElementById('toggle-auth-prompt');
+    const toggleBtn = document.getElementById('toggle-auth-btn');
+    const groupAlias = document.getElementById('group-alias');
 
-    if (tab === 'restore') {
-      panelRestore.style.display = 'block';
-      panelNew.style.display = 'none';
+    if (authMode === 'signup') {
+      if (hint) hint.textContent = 'Create a new secure account with Supabase.';
+      if (btnText) btnText.textContent = 'Create Account';
+      if (prompt) prompt.textContent = 'Already have an account?';
+      if (toggleBtn) toggleBtn.textContent = 'Sign In';
+      if (groupAlias) groupAlias.style.display = 'block';
     } else {
-      panelRestore.style.display = 'none';
-      panelNew.style.display = 'block';
+      if (hint) hint.textContent = 'Sign in to your persistent AegisMind account.';
+      if (btnText) btnText.textContent = 'Sign In';
+      if (prompt) prompt.textContent = "Don't have an account?";
+      if (toggleBtn) toggleBtn.textContent = 'Create Account';
+      if (groupAlias) groupAlias.style.display = 'none';
     }
   }
 
-  // Pre-fill existing token if available in localStorage
+  // Pre-fill existing token if available
   document.addEventListener('DOMContentLoaded', () => {
     const existing = localStorage.getItem('aegis_token');
     if (existing) {
       const input = document.getElementById('login-token-input');
       if (input && !input.value) input.value = existing;
     }
+
+    // Check if user is already authenticated via Supabase
+    if (supabaseClient) {
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user) {
+          syncSessionWithServer(session).then(() => {
+            showToast('Already authenticated. Redirecting...', 'success', 1500);
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          });
+        }
+      });
+    }
   });
+
+  async function syncSessionWithServer(session) {
+    if (!session || !session.access_token) return;
+    try {
+      localStorage.setItem('supabase_token', session.access_token);
+      localStorage.setItem('supabase_user_id', session.user.id);
+      localStorage.setItem('aegis_consent', 'true');
+      
+      const alias = session.user.user_metadata?.alias || session.user.email?.split('@')[0] || 'Member';
+      localStorage.setItem('aegis_alias', alias);
+
+      // Inform Flask backend of active session
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          user_id: session.user.id,
+          email: session.user.email,
+          alias: alias
+        })
+      });
+    } catch (e) {
+      console.warn("Failed to sync session with Flask:", e);
+    }
+  }
+
+  async function handleSupabaseEmailAuth(e) {
+    e.preventDefault();
+    const email = document.getElementById('auth-email-input').value.trim();
+    const password = document.getElementById('auth-password-input').value;
+    const aliasInput = document.getElementById('auth-alias-input');
+    const alias = (aliasInput && aliasInput.value.trim()) || email.split('@')[0];
+
+    const btn = document.getElementById('btn-submit-supabase');
+    btn.disabled = true;
+    btn.innerHTML = '<span>Processing...</span>';
+
+    try {
+      if (supabaseClient) {
+        // Use Supabase JS SDK directly
+        if (authMode === 'signup') {
+          const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: { data: { alias: alias, consent: true } }
+          });
+          if (error) throw error;
+          if (data.session) {
+            await syncSessionWithServer(data.session);
+            showToast('Account created and signed in! Redirecting...', 'success', 2000);
+            setTimeout(() => { window.location.href = '/'; }, 1000);
+          } else {
+            showToast('Account created! Please check your email to confirm.', 'success', 5000);
+            btn.disabled = false;
+            btn.innerHTML = '<span>Create Account</span>';
+          }
+        } else {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
+          if (error) throw error;
+          if (data.session) {
+            await syncSessionWithServer(data.session);
+            showToast('Welcome back! Redirecting...', 'success', 2000);
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          }
+        }
+      } else {
+        // Fallback to Flask backend auth endpoint
+        const endpoint = authMode === 'signup' ? '/api/register' : '/api/login';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, alias, consent: true })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Authentication failed');
+
+        if (data.token) localStorage.setItem('aegis_token', data.token);
+        if (data.alias) localStorage.setItem('aegis_alias', data.alias);
+        localStorage.setItem('aegis_consent', 'true');
+
+        showToast('Signed in successfully! Redirecting...', 'success', 2000);
+        setTimeout(() => { window.location.href = '/'; }, 800);
+      }
+    } catch (err) {
+      showToast(err.message || 'Authentication error', 'error', 4000);
+      btn.disabled = false;
+      btn.innerHTML = `<span>${authMode === 'signup' ? 'Create Account' : 'Sign In'}</span>`;
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    const btn = document.getElementById('google-auth-btn');
+    btn.disabled = true;
+
+    try {
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/auth/callback'
+          }
+        });
+        if (error) throw error;
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        // Fallback to Flask OAuth route
+        window.location.href = '/auth/google';
+      }
+    } catch (err) {
+      showToast(err.message || 'Google Sign-In failed', 'error', 4000);
+      btn.disabled = false;
+    }
+  }
 
   async function handleTokenLogin(e) {
     e.preventDefault();
@@ -233,9 +462,7 @@
       localStorage.setItem('aegis_consent', 'true');
 
       showToast('Session restored! Redirecting...', 'success', 2000);
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 800);
+      setTimeout(() => { window.location.href = '/'; }, 800);
     } catch (err) {
       showToast(err.message, 'error', 4000);
       btn.disabled = false;
@@ -265,9 +492,7 @@
       localStorage.setItem('aegis_consent', 'true');
 
       showToast('New session created! Redirecting...', 'success', 2000);
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 800);
+      setTimeout(() => { window.location.href = '/'; }, 800);
     } catch (err) {
       showToast(err.message, 'error', 4000);
       btn.disabled = false;

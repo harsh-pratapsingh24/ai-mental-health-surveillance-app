@@ -582,6 +582,10 @@ async function apiRequest(path, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   const headers = { Accept: "application/json", ...(options.headers || {}) };
+  const authTok = localStorage.getItem("supabase_token") || localStorage.getItem("aegis_token") || (window.State && window.State.token);
+  if (authTok && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${authTok}`;
+  }
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -1123,9 +1127,6 @@ function resetCheckinForm() {
   $("valence-slider").value = 5;
   $("arousal-slider").value = 5;
   initSliders();
-  $("record-timer").textContent = "00:00";
-  $("voice-status").textContent = t("voice_tap");
-  $("voice-score").textContent = "--";
   State.voiceScore = 0.75;
 }
 
@@ -1277,31 +1278,79 @@ function runBreathPhase() {
 // ────────────────────────────────────────────────────────────────
 // 18. HOME & PROFILE
 // ────────────────────────────────────────────────────────────────
-function updateHome() {
+async function updateHome() {
   const alias = State.alias || "Friend";
-  $("greeting-name").textContent = alias.replace(/\d+$/, "");
-  $("greeting-time-str").textContent = t(greetingKey());
-  $("greeting-sub-text").textContent = t("greeting_sub");
+  const greetingNameEl = $("greeting-name");
+  if (greetingNameEl) greetingNameEl.textContent = alias.replace(/\d+$/, "");
+  const greetingTimeEl = $("greeting-time-str");
+  if (greetingTimeEl) greetingTimeEl.textContent = t(greetingKey());
+  const greetingSubEl = $("greeting-sub-text");
+  if (greetingSubEl) greetingSubEl.textContent = t("greeting_sub");
 
-  const count = State.history.length;
-  const avgDPI = count
-    ? (State.history.reduce((a, h) => a + (h.dpi || 0), 0) / count).toFixed(2)
-    : "—";
-  const lastRisk = count ? State.history[count - 1].risk_level : "low";
+  // Show placeholders immediately
+  const checkinsEl = $("stat-checkins");
+  const dpiEl = $("stat-dpi");
+  const streakEl = $("stat-streak");
+  const riskEl = $("stat-risk");
+  if (checkinsEl) checkinsEl.textContent = "—";
+  if (dpiEl) dpiEl.textContent = "—";
+  if (streakEl) streakEl.textContent = "—";
+  if (riskEl) riskEl.textContent = "—";
 
-  $("stat-checkins").textContent = count;
-  $("stat-dpi").textContent = avgDPI;
-  $("stat-streak").textContent = count > 0 ? 1 : 0;
-  $("stat-risk").textContent = t(`risk_${lastRisk}`).split(" ")[0];
+  // Fetch live stats from server
+  try {
+    const token = State.token || localStorage.getItem("supabase_token") || "";
+    const params = token ? `?token=${encodeURIComponent(token)}` : "";
+    const stats = await apiRequest(`/api/dashboard/stats${params}`);
 
-  const sparkData = buildSparkline();
-  if (sparkData.length >= 2) {
-    const homeCanvas = $("home-sparkline");
-    if (homeCanvas) drawSparkline(homeCanvas, sparkData, lastRisk);
-    $("home-sparkline-section").style.display = "block";
+    if (checkinsEl) checkinsEl.textContent = stats.checkin_count ?? 0;
+    if (dpiEl) dpiEl.textContent = stats.avg_dpi != null ? Number(stats.avg_dpi).toFixed(2) : "—";
+    if (streakEl) streakEl.textContent = stats.streak ?? 0;
+
+    const lastRisk = stats.last_risk || "low";
+    if (riskEl) riskEl.textContent = t(`risk_${lastRisk}`).split(" ")[0];
+
+    // 7-day sparkline from real data
+    const sparkData = (stats.sparkline || []).filter(v => v !== null && v !== undefined);
+    if (sparkData.length >= 2) {
+      const homeCanvas = $("home-sparkline");
+      if (homeCanvas) drawSparkline(homeCanvas, stats.sparkline, lastRisk);
+      const sparkSection = $("home-sparkline-section");
+      if (sparkSection) sparkSection.style.display = "block";
+    } else {
+      const sparkSection = $("home-sparkline-section");
+      if (sparkSection) sparkSection.style.display = "none";
+    }
+
+    // Update insight card based on real risk
+    const insightEl = $("home-insight");
+    if (insightEl) {
+      if (stats.checkin_count === 0) {
+        insightEl.innerHTML = `<div class="insight-title" data-i18n="insight_neutral_title">${t("insight_neutral_title")}</div><p class="insight-text" data-i18n="insight_neutral_text">${t("insight_neutral_text")}</p>`;
+      } else {
+        insightEl.innerHTML = `<div class="insight-title">${t(`insight_${lastRisk}_title`)}</div><p class="insight-text">${t(`insight_${lastRisk}_text`)}</p>`;
+      }
+    }
+
+    // Keep local history in sync for sparkline in checkin results
+    if (stats.checkin_count === 0) {
+      State.history = [];
+    }
+
+    updateEmotionalWeather();
+  } catch (err) {
+    // Fallback to localStorage history if server unreachable
+    const count = State.history.length;
+    const avgDPI = count
+      ? (State.history.reduce((a, h) => a + (h.dpi || 0), 0) / count).toFixed(2)
+      : "—";
+    const lastRisk = count ? State.history[count - 1].risk_level : "low";
+    if (checkinsEl) checkinsEl.textContent = count;
+    if (dpiEl) dpiEl.textContent = avgDPI;
+    if (streakEl) streakEl.textContent = count > 0 ? 1 : 0;
+    if (riskEl) riskEl.textContent = t(`risk_${lastRisk}`).split(" ")[0];
+    updateEmotionalWeather();
   }
-
-  updateEmotionalWeather();
 }
 
 function updateHomeGreeting() {
@@ -1449,19 +1498,18 @@ function toggleSitWithMe() {
 
 function startSitWithMe() {
   sitWithMeActive = true;
-  const btn = $("btn-swm-start");
-  const orb = $("swm-orb");
-  if (btn) btn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right: 8px;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-    I'm okay now`;
-
-  // Intensify orb glow
-  if (orb) {
-    orb.style.animation = "gentlePulse 6s infinite alternate, swmBreathSync 4s ease-in-out infinite";
-    orb.style.boxShadow = "0 0 60px rgba(168, 85, 247, 0.7), 0 0 120px rgba(192, 132, 252, 0.3)";
+  
+  // Show fullscreen overlay
+  const overlay = $("swm-fullscreen-overlay");
+  if (overlay) {
+    overlay.classList.add("active");
+    // Attempt fullscreen API if supported
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
   }
 
-  // Start gentle ambient drone (binaural-like warm pad)
+  // Start gentle ambient drone
   startSwmAmbient();
 
   // Start rotating messages
@@ -1469,7 +1517,7 @@ function startSitWithMe() {
   showSwmMessage();
   swmMessageInterval = setInterval(showSwmMessage, 10000);
 
-  // Start breath sync pulse on the orb
+  // Start breath sync pulse on the new fullscreen ring
   startSwmBreathSync();
 
   showToast(
@@ -1483,33 +1531,26 @@ function startSitWithMe() {
 
 function stopSitWithMe() {
   sitWithMeActive = false;
-  const btn = $("btn-swm-start");
-  const orb = $("swm-orb");
-  const msgEl = $("swm-message");
-
-  if (btn) btn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right: 8px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    Begin "Sit With Me"`;
-
-  if (orb) {
-    orb.style.animation = "gentlePulse 8s infinite alternate";
-    orb.style.boxShadow = "0 0 30px rgba(168, 85, 247, 0.5)";
+  
+  // Hide fullscreen overlay
+  const overlay = $("swm-fullscreen-overlay");
+  if (overlay) {
+    overlay.classList.remove("active");
   }
-
-  if (msgEl) {
-    msgEl.style.opacity = "0";
-    setTimeout(() => {
-      if (msgEl) {
-        msgEl.textContent = State.lang === "hi"
-          ? "मुझे खुशी है कि आप यहाँ आए। ख्याल रखें। 💜"
-          : "I'm glad you came. Take care of yourself. 💜";
-        msgEl.style.opacity = "1";
-      }
-    }, 600);
+  if (document.exitFullscreen && document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
   }
 
   clearInterval(swmMessageInterval);
   swmMessageInterval = null;
+  
+  const msgEl = $("swm-fs-message");
+  if (msgEl) {
+    msgEl.textContent = State.lang === "hi"
+      ? "जब भी आपको एक शांत जगह की आवश्यकता हो, मैं यहाँ हूँ।"
+      : "I'll be here whenever you need a quiet space.";
+  }
+
   stopSwmAmbient();
   stopSwmBreathSync();
 
@@ -1594,27 +1635,46 @@ function stopSwmAmbient() {
 }
 
 function startSwmBreathSync() {
-  const orb = $("swm-orb");
-  if (!orb) return;
+  const outer = $("swm-ring-outer");
+  const inner = $("swm-ring-inner");
+  const label = $("swm-fs-breath-phase");
+  if (!outer || !inner || !label) return;
 
-  // 4-7-8 pacing via CSS transforms on the orb
+  // 4-7-8 pacing via CSS animations
   let phase = "in"; // in(4s) → hold(7s) → out(8s)
+  
+  function applyPhaseClasses(p) {
+    ["inhale", "exhale", "hold"].forEach(c => {
+      outer.classList.remove(c);
+      inner.classList.remove(c);
+    });
+    if (p === "in") {
+      outer.classList.add("inhale");
+      inner.classList.add("inhale");
+      label.textContent = State.lang === "hi" ? "साँस अंदर (4)" : "Breathe In (4)";
+    } else if (p === "hold") {
+      outer.classList.add("hold");
+      inner.classList.add("hold");
+      label.textContent = State.lang === "hi" ? "रोकें (7)" : "Hold (7)";
+    } else if (p === "out") {
+      outer.classList.add("exhale");
+      inner.classList.add("exhale");
+      label.textContent = State.lang === "hi" ? "साँस बाहर (8)" : "Breathe Out (8)";
+    }
+  }
+
   function breathCycle() {
     if (!sitWithMeActive) return;
+    
+    applyPhaseClasses(phase);
+    
     if (phase === "in") {
-      orb.style.transform = "scale(1.2)";
-      orb.style.opacity = "0.9";
-      orb.style.transition = "transform 4s ease-in-out, opacity 4s ease-in-out";
       phase = "hold";
       swmBreathInterval = setTimeout(breathCycle, 4000);
     } else if (phase === "hold") {
-      // Hold — no change, just wait
       phase = "out";
       swmBreathInterval = setTimeout(breathCycle, 7000);
     } else {
-      orb.style.transform = "scale(0.85)";
-      orb.style.opacity = "0.5";
-      orb.style.transition = "transform 8s ease-in-out, opacity 8s ease-in-out";
       phase = "in";
       swmBreathInterval = setTimeout(breathCycle, 8000);
     }
@@ -1627,17 +1687,22 @@ function stopSwmBreathSync() {
     clearTimeout(swmBreathInterval);
     swmBreathInterval = null;
   }
-  const orb = $("swm-orb");
-  if (orb) {
-    orb.style.transform = "scale(1)";
-    orb.style.opacity = "0.6";
-    orb.style.transition = "transform 2s ease-in-out, opacity 2s ease-in-out";
+  const outer = $("swm-ring-outer");
+  const inner = $("swm-ring-inner");
+  const label = $("swm-fs-breath-phase");
+  if (outer && inner && label) {
+    ["inhale", "exhale", "hold"].forEach(c => {
+      outer.classList.remove(c);
+      inner.classList.remove(c);
+    });
+    label.textContent = State.lang === "hi" ? "शांत" : "Breathe";
   }
 }
 
 function releaseThoughtIntoMist() {
   const input = $("defusion-input");
   const cloud = $("mist-cloud-display");
+  const canvas = $("mist-particle-canvas");
   if (!input || !cloud) return;
   const thought = input.value.trim();
   if (!thought) {
@@ -1645,12 +1710,53 @@ function releaseThoughtIntoMist() {
     return;
   }
 
+  // Clear existing particles
+  if (canvas) canvas.innerHTML = "";
+  
   cloud.textContent = `"${thought}"`;
   cloud.classList.remove("dissolving");
 
   setTimeout(() => {
     cloud.classList.add("dissolving");
     playCalmTone(528, 0.4);
+    
+    // Spawn particles
+    if (canvas) {
+      const chars = thought.split("");
+      const rect = cloud.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      
+      chars.forEach((char, i) => {
+        if (char === " ") return;
+        const span = document.createElement("span");
+        span.className = "mist-particle";
+        span.textContent = char;
+        
+        // Randomize origin slightly around the center
+        const x = (rect.left - canvasRect.left) + (rect.width / 2) + (Math.random() * 40 - 20);
+        const y = (rect.top - canvasRect.top) + (rect.height / 2) + (Math.random() * 20 - 10);
+        
+        span.style.left = `${x}px`;
+        span.style.top = `${y}px`;
+        
+        // Randomize drift trajectory
+        const driftX = (Math.random() * 100 - 50) + "px";
+        const driftY = (Math.random() * -80 - 20) + "px";
+        const driftDur = (1.2 + Math.random() * 1.5) + "s";
+        const driftDelay = (Math.random() * 0.3) + "s";
+        
+        span.style.setProperty('--drift-x', driftX);
+        span.style.setProperty('--drift-y', driftY);
+        span.style.setProperty('--drift-dur', driftDur);
+        span.style.setProperty('--drift-delay', driftDelay);
+        
+        canvas.appendChild(span);
+      });
+      
+      // Cleanup particles
+      setTimeout(() => { if (canvas) canvas.innerHTML = ""; }, 3000);
+    }
+
     setTimeout(() => {
       cloud.textContent = State.lang === "hi"
         ? "✦ विचार शांत आकाश में विलीन हो गया। आप इस क्षण सुरक्षित हैं।"
@@ -1665,21 +1771,48 @@ function releaseThoughtIntoMist() {
 let tippTimerInterval = null;
 function startTippTimer(type, seconds) {
   clearInterval(tippTimerInterval);
-  const badge = $(`timer-badge-${type}`);
-  let rem = seconds;
-  if (!badge) return;
+  const card = $(`tipp-card-${type}`);
+  const display = $(`tipp-countdown-${type}`);
+  const progress = $(`tipp-progress-${type}`);
+  const btn = $(`btn-tipp-${type}`);
+  
+  if (!card || !display || !progress) return;
 
-  badge.textContent = `${rem}s remaining...`;
-  badge.style.background = "rgba(168, 85, 247, 0.4)";
+  // Reset any other running cards
+  $$('.tipp-skill-card').forEach(c => c.classList.remove('timer-running'));
+  $$('.tipp-action-btn').forEach(b => {
+    b.disabled = false;
+    b.textContent = b.id.includes('dive') ? "Start 30s Timer" : "Start 60s Timer";
+  });
+
+  let rem = seconds;
+  card.classList.add('timer-running');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = State.lang === "hi" ? "चल रहा है..." : "Running...";
+  }
+
+  function formatTime(s) {
+    const mins = Math.floor(s / 60).toString().padStart(2, '0');
+    const secs = (s % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  }
+
+  display.textContent = formatTime(rem);
+  progress.style.width = '100%';
 
   tippTimerInterval = setInterval(() => {
     rem--;
-    if (rem > 0) {
-      badge.textContent = `${rem}s remaining...`;
+    if (rem >= 0) {
+      display.textContent = formatTime(rem);
+      progress.style.width = `${(rem / seconds) * 100}%`;
     } else {
       clearInterval(tippTimerInterval);
-      badge.textContent = `${seconds}s Timer`;
-      badge.style.background = "rgba(168, 85, 247, 0.18)";
+      card.classList.remove('timer-running');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = type === 'dive' ? "Start 30s Timer" : "Start 60s Timer";
+      }
       playCalmTone(432, 0.5);
       showToast(
         State.lang === "hi"
@@ -1695,11 +1828,14 @@ function startTippTimer(type, seconds) {
 let bilateralInterval = null;
 let bilateralActive = false;
 let bilateralStep = 0;
+let bilateralAudioCtx = null;
 
 function toggleBilateralPacer() {
   const btn = $("btn-toggle-tapping");
   const padLeft = $("tap-pad-left");
   const padRight = $("tap-pad-right");
+  const shoulderLeft = $("shoulder-left");
+  const shoulderRight = $("shoulder-right");
 
   if (bilateralActive) {
     clearInterval(bilateralInterval);
@@ -1707,23 +1843,71 @@ function toggleBilateralPacer() {
     if (btn) btn.innerHTML = `<span>${State.lang === "hi" ? "शुरू करें" : "Start Pacer"}</span>`;
     if (padLeft) padLeft.classList.remove("active");
     if (padRight) padRight.classList.remove("active");
+    if (shoulderLeft) shoulderLeft.classList.remove("pulse");
+    if (shoulderRight) shoulderRight.classList.remove("pulse");
+    
+    if (bilateralAudioCtx) {
+      try { bilateralAudioCtx.close(); } catch {}
+      bilateralAudioCtx = null;
+    }
   } else {
     bilateralActive = true;
     if (btn) btn.innerHTML = `<span>${State.lang === "hi" ? "रोकें" : "Stop Pacer"}</span>`;
     bilateralStep = 0;
+    
+    try {
+      bilateralAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch {}
+
+    function playStereoTap(isLeft) {
+      if (!bilateralAudioCtx) return;
+      try {
+        const osc = bilateralAudioCtx.createOscillator();
+        const gain = bilateralAudioCtx.createGain();
+        const panner = bilateralAudioCtx.createStereoPanner ? bilateralAudioCtx.createStereoPanner() : null;
+        
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(isLeft ? 261.63 : 329.63, bilateralAudioCtx.currentTime); // C4 / E4
+        gain.gain.setValueAtTime(0, bilateralAudioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.15, bilateralAudioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, bilateralAudioCtx.currentTime + 0.4);
+        
+        if (panner) {
+          panner.pan.value = isLeft ? -0.8 : 0.8;
+          osc.connect(gain).connect(panner).connect(bilateralAudioCtx.destination);
+        } else {
+          osc.connect(gain).connect(bilateralAudioCtx.destination);
+        }
+        
+        osc.start();
+        osc.stop(bilateralAudioCtx.currentTime + 0.5);
+      } catch {}
+    }
 
     function step() {
       if (bilateralStep === 0) {
         padLeft?.classList.add("active");
         padRight?.classList.remove("active");
+        shoulderLeft?.classList.add("pulse");
+        shoulderRight?.classList.remove("pulse");
+        
         if (navigator.vibrate) navigator.vibrate(35);
+        playStereoTap(true);
         bilateralStep = 1;
       } else {
         padLeft?.classList.remove("active");
         padRight?.classList.add("active");
+        shoulderLeft?.classList.remove("pulse");
+        shoulderRight?.classList.add("pulse");
+        
         if (navigator.vibrate) navigator.vibrate(35);
+        playStereoTap(false);
         bilateralStep = 0;
       }
+    }
+    
+    if (bilateralAudioCtx && bilateralAudioCtx.state === 'suspended') {
+      bilateralAudioCtx.resume();
     }
     step();
     bilateralInterval = setInterval(step, 1100);
@@ -2015,6 +2199,91 @@ function escHtml(str) {
 // ────────────────────────────────────────────────────────────────
 // 20. INITIALIZATION
 // ────────────────────────────────────────────────────────────────
+function initSupabaseAuth() {
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY && typeof window.supabase !== "undefined") {
+    try {
+      window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user) {
+          State.token = session.access_token;
+          State.supabaseUserId = session.user.id;
+          State.email = session.user.email;
+          const metaAlias = session.user.user_metadata?.alias;
+          if (metaAlias) State.alias = metaAlias;
+          State.consent = true;
+          localStorage.setItem("supabase_token", session.access_token);
+          localStorage.setItem("supabase_user_id", session.user.id);
+          localStorage.setItem("aegis_alias", State.alias);
+          saveState();
+          updateAuthHeaderUI(true);
+          updateProfile();
+        } else {
+          const storedToken = localStorage.getItem("supabase_token");
+          updateAuthHeaderUI(!!storedToken);
+        }
+      }).catch((e) => {
+        console.warn("Supabase session check notice:", e);
+      });
+    } catch (err) {
+      console.warn("Supabase client init notice:", err);
+    }
+  } else {
+    const hasToken = !!(localStorage.getItem("supabase_token") || localStorage.getItem("aegis_token"));
+    updateAuthHeaderUI(hasToken);
+  }
+}
+
+function updateAuthHeaderUI(isLoggedIn) {
+  const loginLink = document.querySelector(".header-login-link");
+  if (!loginLink) return;
+  if (isLoggedIn && (State.email || localStorage.getItem("supabase_token"))) {
+    loginLink.textContent = "Sign Out";
+    loginLink.setAttribute("title", `Signed in as ${State.alias || "User"}`);
+    loginLink.onclick = handleSignOut;
+  } else {
+    loginLink.textContent = "Sign In";
+    loginLink.onclick = openAuthModal;
+  }
+}
+
+async function handleSignOut() {
+  // 1. Sign out from Supabase client
+  if (window.supabaseClient) {
+    try {
+      await window.supabaseClient.auth.signOut();
+    } catch (e) {
+      console.warn("Supabase signOut notice:", e);
+    }
+  }
+  // 2. Clear all localStorage tokens and state
+  localStorage.removeItem("supabase_token");
+  localStorage.removeItem("supabase_user_id");
+  localStorage.removeItem("aegis_token");
+  localStorage.removeItem("aegis_alias");
+  localStorage.removeItem("aegis_consent");
+  localStorage.removeItem("aegis_history");
+  // 3. Clear in-memory State
+  State.token = null;
+  State.alias = null;
+  State.consent = false;
+  State.history = [];
+  State.email = null;
+  State.supabaseUserId = null;
+  // 4. Tell the Flask server to clear the session cookie — use credentials:include so cookies are sent
+  try {
+    await fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Accept": "application/json" }
+    });
+  } catch {}
+  showToast("Signed out successfully", "info");
+  // 5. Redirect to login page (not just reload — avoids stale state)
+  setTimeout(() => {
+    window.location.href = "/login";
+  }, 600);
+}
+
 function init() {
   // The Android wrapper can supply a native navigation bar and secure token
   // bridge without changing the browser layout.
@@ -2036,6 +2305,7 @@ function init() {
   }
 
   initSliders();
+  initSupabaseAuth();
 
   const journal = $("journal-input");
   if (journal) {
@@ -2097,6 +2367,13 @@ window.startTippTimer = startTippTimer;
 window.toggleBilateralPacer = toggleBilateralPacer;
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
+window.handleSignOut = handleSignOut;
 window.handleInAppTokenRestore = handleInAppTokenRestore;
 window.generateNewSessionPrompt = generateNewSessionPrompt;
 window.AegisMindApi = { request: apiRequest };
+
+// Privacy: Quick Exit
+function quickExit() {
+  window.location.replace("https://weather.com");
+}
+window.quickExit = quickExit;

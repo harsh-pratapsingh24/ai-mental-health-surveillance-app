@@ -582,6 +582,10 @@ async function apiRequest(path, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   const headers = { Accept: "application/json", ...(options.headers || {}) };
+  const authTok = localStorage.getItem("supabase_token") || localStorage.getItem("aegis_token") || (window.State && window.State.token);
+  if (authTok && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${authTok}`;
+  }
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -1123,9 +1127,6 @@ function resetCheckinForm() {
   $("valence-slider").value = 5;
   $("arousal-slider").value = 5;
   initSliders();
-  $("record-timer").textContent = "00:00";
-  $("voice-status").textContent = t("voice_tap");
-  $("voice-score").textContent = "--";
   State.voiceScore = 0.75;
 }
 
@@ -1277,31 +1278,79 @@ function runBreathPhase() {
 // ────────────────────────────────────────────────────────────────
 // 18. HOME & PROFILE
 // ────────────────────────────────────────────────────────────────
-function updateHome() {
+async function updateHome() {
   const alias = State.alias || "Friend";
-  $("greeting-name").textContent = alias.replace(/\d+$/, "");
-  $("greeting-time-str").textContent = t(greetingKey());
-  $("greeting-sub-text").textContent = t("greeting_sub");
+  const greetingNameEl = $("greeting-name");
+  if (greetingNameEl) greetingNameEl.textContent = alias.replace(/\d+$/, "");
+  const greetingTimeEl = $("greeting-time-str");
+  if (greetingTimeEl) greetingTimeEl.textContent = t(greetingKey());
+  const greetingSubEl = $("greeting-sub-text");
+  if (greetingSubEl) greetingSubEl.textContent = t("greeting_sub");
 
-  const count = State.history.length;
-  const avgDPI = count
-    ? (State.history.reduce((a, h) => a + (h.dpi || 0), 0) / count).toFixed(2)
-    : "—";
-  const lastRisk = count ? State.history[count - 1].risk_level : "low";
+  // Show placeholders immediately
+  const checkinsEl = $("stat-checkins");
+  const dpiEl = $("stat-dpi");
+  const streakEl = $("stat-streak");
+  const riskEl = $("stat-risk");
+  if (checkinsEl) checkinsEl.textContent = "—";
+  if (dpiEl) dpiEl.textContent = "—";
+  if (streakEl) streakEl.textContent = "—";
+  if (riskEl) riskEl.textContent = "—";
 
-  $("stat-checkins").textContent = count;
-  $("stat-dpi").textContent = avgDPI;
-  $("stat-streak").textContent = count > 0 ? 1 : 0;
-  $("stat-risk").textContent = t(`risk_${lastRisk}`).split(" ")[0];
+  // Fetch live stats from server
+  try {
+    const token = State.token || localStorage.getItem("supabase_token") || "";
+    const params = token ? `?token=${encodeURIComponent(token)}` : "";
+    const stats = await apiRequest(`/api/dashboard/stats${params}`);
 
-  const sparkData = buildSparkline();
-  if (sparkData.length >= 2) {
-    const homeCanvas = $("home-sparkline");
-    if (homeCanvas) drawSparkline(homeCanvas, sparkData, lastRisk);
-    $("home-sparkline-section").style.display = "block";
+    if (checkinsEl) checkinsEl.textContent = stats.checkin_count ?? 0;
+    if (dpiEl) dpiEl.textContent = stats.avg_dpi != null ? Number(stats.avg_dpi).toFixed(2) : "—";
+    if (streakEl) streakEl.textContent = stats.streak ?? 0;
+
+    const lastRisk = stats.last_risk || "low";
+    if (riskEl) riskEl.textContent = t(`risk_${lastRisk}`).split(" ")[0];
+
+    // 7-day sparkline from real data
+    const sparkData = (stats.sparkline || []).filter(v => v !== null && v !== undefined);
+    if (sparkData.length >= 2) {
+      const homeCanvas = $("home-sparkline");
+      if (homeCanvas) drawSparkline(homeCanvas, stats.sparkline, lastRisk);
+      const sparkSection = $("home-sparkline-section");
+      if (sparkSection) sparkSection.style.display = "block";
+    } else {
+      const sparkSection = $("home-sparkline-section");
+      if (sparkSection) sparkSection.style.display = "none";
+    }
+
+    // Update insight card based on real risk
+    const insightEl = $("home-insight");
+    if (insightEl) {
+      if (stats.checkin_count === 0) {
+        insightEl.innerHTML = `<div class="insight-title" data-i18n="insight_neutral_title">${t("insight_neutral_title")}</div><p class="insight-text" data-i18n="insight_neutral_text">${t("insight_neutral_text")}</p>`;
+      } else {
+        insightEl.innerHTML = `<div class="insight-title">${t(`insight_${lastRisk}_title`)}</div><p class="insight-text">${t(`insight_${lastRisk}_text`)}</p>`;
+      }
+    }
+
+    // Keep local history in sync for sparkline in checkin results
+    if (stats.checkin_count === 0) {
+      State.history = [];
+    }
+
+    updateEmotionalWeather();
+  } catch (err) {
+    // Fallback to localStorage history if server unreachable
+    const count = State.history.length;
+    const avgDPI = count
+      ? (State.history.reduce((a, h) => a + (h.dpi || 0), 0) / count).toFixed(2)
+      : "—";
+    const lastRisk = count ? State.history[count - 1].risk_level : "low";
+    if (checkinsEl) checkinsEl.textContent = count;
+    if (dpiEl) dpiEl.textContent = avgDPI;
+    if (streakEl) streakEl.textContent = count > 0 ? 1 : 0;
+    if (riskEl) riskEl.textContent = t(`risk_${lastRisk}`).split(" ")[0];
+    updateEmotionalWeather();
   }
-
-  updateEmotionalWeather();
 }
 
 function updateHomeGreeting() {
@@ -2150,6 +2199,91 @@ function escHtml(str) {
 // ────────────────────────────────────────────────────────────────
 // 20. INITIALIZATION
 // ────────────────────────────────────────────────────────────────
+function initSupabaseAuth() {
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY && typeof window.supabase !== "undefined") {
+    try {
+      window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user) {
+          State.token = session.access_token;
+          State.supabaseUserId = session.user.id;
+          State.email = session.user.email;
+          const metaAlias = session.user.user_metadata?.alias;
+          if (metaAlias) State.alias = metaAlias;
+          State.consent = true;
+          localStorage.setItem("supabase_token", session.access_token);
+          localStorage.setItem("supabase_user_id", session.user.id);
+          localStorage.setItem("aegis_alias", State.alias);
+          saveState();
+          updateAuthHeaderUI(true);
+          updateProfile();
+        } else {
+          const storedToken = localStorage.getItem("supabase_token");
+          updateAuthHeaderUI(!!storedToken);
+        }
+      }).catch((e) => {
+        console.warn("Supabase session check notice:", e);
+      });
+    } catch (err) {
+      console.warn("Supabase client init notice:", err);
+    }
+  } else {
+    const hasToken = !!(localStorage.getItem("supabase_token") || localStorage.getItem("aegis_token"));
+    updateAuthHeaderUI(hasToken);
+  }
+}
+
+function updateAuthHeaderUI(isLoggedIn) {
+  const loginLink = document.querySelector(".header-login-link");
+  if (!loginLink) return;
+  if (isLoggedIn && (State.email || localStorage.getItem("supabase_token"))) {
+    loginLink.textContent = "Sign Out";
+    loginLink.setAttribute("title", `Signed in as ${State.alias || "User"}`);
+    loginLink.onclick = handleSignOut;
+  } else {
+    loginLink.textContent = "Sign In";
+    loginLink.onclick = openAuthModal;
+  }
+}
+
+async function handleSignOut() {
+  // 1. Sign out from Supabase client
+  if (window.supabaseClient) {
+    try {
+      await window.supabaseClient.auth.signOut();
+    } catch (e) {
+      console.warn("Supabase signOut notice:", e);
+    }
+  }
+  // 2. Clear all localStorage tokens and state
+  localStorage.removeItem("supabase_token");
+  localStorage.removeItem("supabase_user_id");
+  localStorage.removeItem("aegis_token");
+  localStorage.removeItem("aegis_alias");
+  localStorage.removeItem("aegis_consent");
+  localStorage.removeItem("aegis_history");
+  // 3. Clear in-memory State
+  State.token = null;
+  State.alias = null;
+  State.consent = false;
+  State.history = [];
+  State.email = null;
+  State.supabaseUserId = null;
+  // 4. Tell the Flask server to clear the session cookie — use credentials:include so cookies are sent
+  try {
+    await fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Accept": "application/json" }
+    });
+  } catch {}
+  showToast("Signed out successfully", "info");
+  // 5. Redirect to login page (not just reload — avoids stale state)
+  setTimeout(() => {
+    window.location.href = "/login";
+  }, 600);
+}
+
 function init() {
   // The Android wrapper can supply a native navigation bar and secure token
   // bridge without changing the browser layout.
@@ -2171,6 +2305,7 @@ function init() {
   }
 
   initSliders();
+  initSupabaseAuth();
 
   const journal = $("journal-input");
   if (journal) {
@@ -2232,6 +2367,7 @@ window.startTippTimer = startTippTimer;
 window.toggleBilateralPacer = toggleBilateralPacer;
 window.openAuthModal = openAuthModal;
 window.closeAuthModal = closeAuthModal;
+window.handleSignOut = handleSignOut;
 window.handleInAppTokenRestore = handleInAppTokenRestore;
 window.generateNewSessionPrompt = generateNewSessionPrompt;
 window.AegisMindApi = { request: apiRequest };

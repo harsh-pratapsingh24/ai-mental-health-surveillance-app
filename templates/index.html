@@ -19,6 +19,8 @@
 
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="/static/css/mobile.css" />
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -38,9 +40,12 @@
 <div id="toast-container"></div>
 <div id="crisis-lock-overlay" class="crisis-lock-overlay"></div>
 
+<<<<<<< HEAD
 <!-- QUICK EXIT BUTTON — always visible, immediate privacy escape -->
 <button id="quick-exit-btn" onclick="quickExit()" aria-label="Quick Exit — redirects to a neutral page immediately">✕ Exit</button>
 
+=======
+>>>>>>> 68be87e7dd861ccb0925bd068d4c0eb34d45537d
 <!-- SIT WITH ME — FULLSCREEN IMMERSIVE OVERLAY -->
 <div id="swm-fullscreen-overlay" role="dialog" aria-label="Sit With Me — calming presence mode" aria-modal="true">
   <!-- Breathing Ring -->
@@ -479,32 +484,6 @@
           <div class="char-counter"><span id="char-count">0</span>/800</div>
         </div>
 
-        <!-- Voice Note -->
-        <div class="card">
-          <div class="card-title">
-            <div class="card-title-left">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-              <span data-i18n="voice_label">Voice Note</span>
-            </div>
-            <span style="font-size:11px;color:var(--text-muted);"><span data-i18n="voice_score_label">Clarity</span>: <span id="voice-score" style="color:var(--brand-secondary);font-weight:700;">--</span></span>
-          </div>
-
-          <div class="voice-recorder">
-            <div class="waveform-container">
-              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-            </div>
-            <div class="recording-timer" id="record-timer">00:00</div>
-            <button class="btn-record" id="record-btn" onclick="toggleRecording()" aria-label="Toggle voice recording">
-              <span id="record-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-              </span>
-            </button>
-            <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:6px;" id="voice-status" data-i18n="voice_tap">Tap to record a voice note</p>
-          </div>
-        </div>
 
         <button class="btn btn-primary mt-2" id="submit-btn" onclick="submitCheckin()">
           <span data-i18n="submit_checkin">Submit Check-In</span>
@@ -881,7 +860,11 @@
 </div>
 
 <!-- App JS -->
-<script>window.AEGIS_API_BASE_URL = {{ api_base_url|tojson }};</script>
+<script>
+  window.AEGIS_API_BASE_URL = {{ (api_base_url or '')|tojson }};
+  window.SUPABASE_URL = {{ (supabase_url or '')|tojson }};
+  window.SUPABASE_ANON_KEY = {{ (supabase_anon_key or '')|tojson }};
+</script>
 <script src="/static/js/app.js"></script>
 <script>
   // Register Service Worker for PWA support

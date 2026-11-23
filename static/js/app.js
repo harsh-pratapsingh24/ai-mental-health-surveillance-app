@@ -2081,30 +2081,54 @@ function updateForumTabs() {
 function renderForum(posts) {
   const container = $("forum-feed");
   if (!posts.length) {
-    container.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">${t("forum_empty")}</p>`;
+    container.innerHTML = `
+      <div class="card" style="text-align:center;padding:32px 18px;margin-top:8px;">
+        <div style="font-size:28px;margin-bottom:8px;opacity:0.7;">💬</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">No Posts Yet</div>
+        <div style="font-size:12px;color:var(--text-secondary);">${t("forum_empty")}</div>
+      </div>
+    `;
     return;
   }
   container.innerHTML = posts
     .map(
       (p) => `
-    <div class="forum-post" id="post-${p.id}">
-      <div class="post-header">
-        <div class="post-avatar">${p.alias.slice(0, 2).toUpperCase()}</div>
-        <div>
-          <div class="post-alias">${escHtml(p.alias)}</div>
-          <div class="post-time">${timeAgo(p.timestamp)}</div>
+    <div class="forum-post card" id="post-${p.id}" style="padding:16px;">
+      <div class="post-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="post-avatar" style="width:34px;height:34px;border-radius:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:var(--brand-secondary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">${escHtml((p.alias || "An").slice(0, 2).toUpperCase())}</div>
+          <div>
+            <div class="post-alias" style="font-weight:700;font-size:13px;color:var(--text-primary);">${escHtml(p.alias || "Anonymous")}</div>
+            <div class="post-time" style="font-size:10.5px;color:var(--text-muted);">${timeAgo(p.created_at || p.timestamp)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="info-btn" onclick="reportPost('${p.id}')" title="Report Post" style="width:26px;height:26px;border-radius:8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </button>
         </div>
       </div>
-      <div class="post-text">${escHtml(p.text)}</div>
-      <div style="display:flex;gap:6px;">
-        <button class="reaction-btn" onclick="reactPost('${p.id}','heart')">❤️ <span id="react-heart-${p.id}">${p.reactions.heart}</span></button>
-        <button class="reaction-btn" onclick="reactPost('${p.id}','hug')">🫂 <span id="react-hug-${p.id}">${p.reactions.hug}</span></button>
-        <button class="reaction-btn" onclick="reactPost('${p.id}','star')">⭐ <span id="react-star-${p.id}">${p.reactions.star}</span></button>
+      <div class="post-text" style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">${escHtml(p.text)}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="reaction-btn" onclick="reactPost('${p.id}','heart')">❤️ <span id="react-heart-${p.id}">${(p.reactions && p.reactions.heart) || 0}</span></button>
+        <button class="reaction-btn" onclick="reactPost('${p.id}','hug')">🫂 <span id="react-hug-${p.id}">${(p.reactions && p.reactions.hug) || 0}</span></button>
+        <button class="reaction-btn" onclick="reactPost('${p.id}','star')">⭐ <span id="react-star-${p.id}">${(p.reactions && p.reactions.star) || 0}</span></button>
       </div>
     </div>
   `,
     )
     .join("");
+}
+
+async function reportPost(postId) {
+  if (!confirm("Report this post for clinical counselor review?")) return;
+  try {
+    await apiRequest(`/api/forum/${postId}/report`, { method: "POST" });
+    showToast("Post reported for review", "info");
+    loadForum();
+  } catch {
+    showToast("Could not report post", "error");
+  }
 }
 
 async function submitForumPost() {
@@ -2205,6 +2229,11 @@ function initSupabaseAuth() {
       window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
         if (session && session.user) {
+          const oldUserId = localStorage.getItem("supabase_user_id");
+          if (oldUserId && oldUserId !== session.user.id) {
+            State.history = [];
+            localStorage.removeItem("aegis_history");
+          }
           State.token = session.access_token;
           State.supabaseUserId = session.user.id;
           State.email = session.user.email;
@@ -2217,12 +2246,40 @@ function initSupabaseAuth() {
           saveState();
           updateAuthHeaderUI(true);
           updateProfile();
+          updateHome();
         } else {
           const storedToken = localStorage.getItem("supabase_token");
           updateAuthHeaderUI(!!storedToken);
         }
       }).catch((e) => {
         console.warn("Supabase session check notice:", e);
+      });
+
+      window.supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session && session.user) {
+          const oldUserId = localStorage.getItem("supabase_user_id");
+          if (oldUserId && oldUserId !== session.user.id) {
+            State.history = [];
+            localStorage.removeItem("aegis_history");
+          }
+          State.token = session.access_token;
+          State.supabaseUserId = session.user.id;
+          State.email = session.user.email;
+          const metaAlias = session.user.user_metadata?.alias;
+          if (metaAlias) State.alias = metaAlias;
+          State.consent = true;
+          localStorage.setItem("supabase_token", session.access_token);
+          localStorage.setItem("supabase_user_id", session.user.id);
+          localStorage.setItem("aegis_alias", State.alias);
+          saveState();
+          updateAuthHeaderUI(true);
+          updateProfile();
+          updateHome();
+        } else if (event === "SIGNED_OUT") {
+          updateAuthHeaderUI(false);
+          updateProfile();
+          updateHome();
+        }
       });
     } catch (err) {
       console.warn("Supabase client init notice:", err);
@@ -2234,15 +2291,21 @@ function initSupabaseAuth() {
 }
 
 function updateAuthHeaderUI(isLoggedIn) {
-  const loginLink = document.querySelector(".header-login-link");
+  const loginLink = document.getElementById("header-auth-link") || document.querySelector(".header-login-link");
   if (!loginLink) return;
-  if (isLoggedIn && (State.email || localStorage.getItem("supabase_token"))) {
+  const hasToken = !!(State.token || State.supabaseUserId || localStorage.getItem("supabase_token") || localStorage.getItem("aegis_token"));
+  if (isLoggedIn && hasToken) {
     loginLink.textContent = "Sign Out";
-    loginLink.setAttribute("title", `Signed in as ${State.alias || "User"}`);
-    loginLink.onclick = handleSignOut;
+    loginLink.setAttribute("title", `Signed in as ${State.alias || State.email || "User"}`);
+    loginLink.removeAttribute("href");
+    loginLink.onclick = (e) => {
+      e.preventDefault();
+      handleSignOut();
+    };
   } else {
     loginLink.textContent = "Sign In";
-    loginLink.onclick = openAuthModal;
+    loginLink.setAttribute("href", "/login");
+    loginLink.onclick = null;
   }
 }
 
@@ -2356,6 +2419,7 @@ window.startBreathing = startBreathing;
 window.submitForumPost = submitForumPost;
 window.setForumLanguage = setForumLanguage;
 window.reactPost = reactPost;
+window.reportPost = reportPost;
 window.loadCounselorQueue = loadCounselorQueue;
 window.markReviewed = markReviewed;
 window.resetSession = resetSession;
@@ -2371,9 +2435,3 @@ window.handleSignOut = handleSignOut;
 window.handleInAppTokenRestore = handleInAppTokenRestore;
 window.generateNewSessionPrompt = generateNewSessionPrompt;
 window.AegisMindApi = { request: apiRequest };
-
-// Privacy: Quick Exit
-function quickExit() {
-  window.location.replace("https://weather.com");
-}
-window.quickExit = quickExit;

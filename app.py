@@ -691,11 +691,7 @@ def google_callback():
 @app.route("/auth/logout", methods=["GET", "POST"])
 def logout():
     log_audit_event(AuditEventType.AUTH_LOGOUT, ip_address=request.remote_addr)
-    session.pop("google_user", None)
-    session.pop("supabase_token", None)
-    session.pop("user_id", None)
-    session.pop("user_email", None)
-    session.pop("user_alias", None)
+    session.clear()
     if request.headers.get("Accept", "").startswith("application/json") or request.method == "POST":
         return jsonify({"status": "logged_out"})
     return redirect(url_for("login"))
@@ -1060,6 +1056,15 @@ def report_post(post_id):
         log_audit_event(AuditEventType.FORUM_POST_REPORTED, target_id=post_id, details=result, ip_address=request.remote_addr)
         return jsonify(result)
     return jsonify({"error": "Post not found"}), 404
+
+
+@app.route("/api/forum/<post_id>", methods=["DELETE"])
+def delete_forum_post(post_id):
+    user_id = getattr(g, "user_id", None) or session.get("user_id") or "ANON"
+    success = db.delete_forum_post(post_id, user_id)
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"error": "Post not found or unauthorized"}), 404
 
 
 @app.route("/api/counselor/queue", methods=["GET"])

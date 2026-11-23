@@ -1,5 +1,5 @@
 """Test script for AegisMind Flask App""" #import the libraries
-from app import app, supabase, get_user_profile, CHECK_IN_HISTORY, USER_PROFILES
+from app import app, get_user_profile
 import json
 
 print('=== Testing AegisMind Flask App ===')

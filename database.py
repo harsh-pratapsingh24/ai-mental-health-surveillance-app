@@ -281,7 +281,9 @@ def save_checkin(
     # Primary: Supabase
     if _supabase_client:
         try:
-            _supabase_client.from_("check_ins").insert({
+            profile = get_profile_by_id(user_id_or_token)
+            supabase_user_id = profile.get("id") if profile else None
+            insert_payload = {
                 "id": record_id,
                 "text": text,
                 "valence": float(valence),
@@ -292,7 +294,10 @@ def save_checkin(
                 "delta_dpi": float(delta_dpi),
                 "risk_level": risk_level,
                 "created_at": now_iso
-            }).execute()
+            }
+            if supabase_user_id:
+                insert_payload["user_id"] = supabase_user_id
+            _supabase_client.from_("check_ins").insert(insert_payload).execute()
         except Exception as e:
             logger.warning(f"Supabase save_checkin notice: {e}")
 
@@ -329,9 +334,20 @@ def get_checkin_history(user_id_or_token: str, limit: int = 30) -> List[Dict[str
     # Primary: Supabase
     if _supabase_client:
         try:
-            res = _supabase_client.from_("check_ins").select("*").order("created_at", desc=False).limit(limit).execute()
-            if res.data:
-                return res.data
+            profile = get_profile_by_id(user_id_or_token)
+            supabase_user_id = profile.get("id") if profile else None
+            if supabase_user_id:
+                res = _supabase_client.from_("check_ins").select("*").eq("user_id", supabase_user_id).order("created_at", desc=False).limit(limit).execute()
+                if res.data is not None:
+                    return res.data
+            elif user_id_or_token:
+                # Direct check if user_id_or_token was already a profile UUID
+                try:
+                    res = _supabase_client.from_("check_ins").select("*").eq("user_id", user_id_or_token).order("created_at", desc=False).limit(limit).execute()
+                    if res.data:
+                        return res.data
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Supabase get_checkin_history notice: {e}")
 
@@ -384,12 +400,17 @@ def save_chat_message(user_id_or_token: str, sender: str, message: str) -> Dict[
     # Primary: Supabase
     if _supabase_client:
         try:
-            _supabase_client.from_("chat_messages").insert({
+            profile = get_profile_by_id(user_id_or_token)
+            supabase_user_id = profile.get("id") if profile else None
+            insert_data = {
                 "id": msg_id,
                 "sender": sender,
                 "message": message,
                 "created_at": now_iso
-            }).execute()
+            }
+            if supabase_user_id:
+                insert_data["user_id"] = supabase_user_id
+            _supabase_client.from_("chat_messages").insert(insert_data).execute()
         except Exception as e:
             logger.warning(f"Supabase save_chat_message notice: {e}")
 
@@ -420,9 +441,19 @@ def get_chat_history(user_id_or_token: str, limit: int = 10) -> List[Dict[str, A
     # Primary: Supabase
     if _supabase_client:
         try:
-            res = _supabase_client.from_("chat_messages").select("*").order("created_at", desc=False).limit(limit).execute()
-            if res.data:
-                return res.data
+            profile = get_profile_by_id(user_id_or_token)
+            supabase_user_id = profile.get("id") if profile else None
+            if supabase_user_id:
+                res = _supabase_client.from_("chat_messages").select("*").eq("user_id", supabase_user_id).order("created_at", desc=False).limit(limit).execute()
+                if res.data is not None:
+                    return res.data
+            elif user_id_or_token:
+                try:
+                    res = _supabase_client.from_("chat_messages").select("*").eq("user_id", user_id_or_token).order("created_at", desc=False).limit(limit).execute()
+                    if res.data:
+                        return res.data
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Supabase get_chat_history notice: {e}")
 
@@ -572,6 +603,18 @@ def react_to_forum_post(post_id: str, reaction: str) -> Optional[Dict[str, int]]
 
 def report_forum_post(post_id: str) -> Optional[Dict[str, Any]]:
     """Increment reports count and flag if reports >= 3."""
+    reports = 1
+    flagged = False
+    if _supabase_client:
+        try:
+            res = _supabase_client.from_("forum_posts").select("reports").eq("id", post_id).limit(1).execute()
+            if res.data:
+                reports = (res.data[0].get("reports") or 0) + 1
+                flagged = (reports >= 3)
+                _supabase_client.from_("forum_posts").update({"reports": reports, "flagged": flagged}).eq("id", post_id).execute()
+        except Exception as e:
+            logger.warning(f"Supabase report_forum_post notice: {e}")
+
     try:
         with get_sqlite_conn() as conn:
             cursor = conn.cursor()
@@ -586,9 +629,38 @@ def report_forum_post(post_id: str) -> Optional[Dict[str, Any]]:
                 )
                 conn.commit()
                 return {"status": "reported", "reports": reports, "flagged": bool(flagged)}
+            elif _supabase_client:
+                return {"status": "reported", "reports": reports, "flagged": bool(flagged)}
     except Exception as e:
         logger.error(f"SQLite report error: {e}")
-    return None
+    return {"status": "reported", "reports": reports, "flagged": bool(flagged)}
+
+
+def delete_forum_post(post_id: str, user_id_or_token: Optional[str] = None) -> bool:
+    """Delete a forum post from Supabase and SQLite."""
+    deleted = False
+    if _supabase_client:
+        try:
+            query = _supabase_client.from_("forum_posts").delete().eq("id", post_id)
+            if user_id_or_token and user_id_or_token != "ADMIN":
+                query = query.eq("user_id", user_id_or_token)
+            query.execute()
+            deleted = True
+        except Exception as e:
+            logger.warning(f"Supabase delete_forum_post notice: {e}")
+    try:
+        with get_sqlite_conn() as conn:
+            cursor = conn.cursor()
+            if user_id_or_token and user_id_or_token != "ADMIN":
+                cursor.execute("DELETE FROM forum_posts WHERE id = ? AND user_id = ?", (post_id, user_id_or_token))
+            else:
+                cursor.execute("DELETE FROM forum_posts WHERE id = ?", (post_id,))
+            conn.commit()
+            if cursor.rowcount > 0:
+                deleted = True
+    except Exception as e:
+        logger.error(f"SQLite delete error: {e}")
+    return deleted
 
 
 # ---------------------------------------------------------------------------

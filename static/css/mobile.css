@@ -111,8 +111,11 @@ body {
   overflow-x: hidden;
   transition: background var(--t-mid) var(--ease-out), color var(--t-mid) var(--ease-out);
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0;
 }
 
 /* ── 3. Atmospheric Background Orbs ──────────────────────────── */
@@ -201,16 +204,17 @@ body {
   width: 100%;
   max-width: 440px;
   min-height: 100dvh;
+  margin: 0 auto;
   position: relative;
   background: var(--bg-base);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  overflow-x: hidden;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
 }
 
 @media (min-width: 441px) {
-  body { background: #040407; }
+  body { background: #06060A; }
   #app-shell {
     border-left: 1px solid var(--border-subtle);
     border-right: 1px solid var(--border-subtle);
@@ -340,7 +344,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--sp-4) var(--sp-4) 88px;
+  padding: var(--sp-4) var(--sp-4) 100px;
 }
 .panels-container::-webkit-scrollbar { width: 0; }
 
@@ -358,25 +362,25 @@ body {
 /* ── 7. Cards with Refined Glassmorphism ─────────────────────── */
 .card {
   background: rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 18px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition: border-color var(--t-fast), transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
 }
 .card:hover {
-  border-color: rgba(168, 85, 247, 0.32);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 20px rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.12);
 }
 
 [data-theme="light"] .card {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(168, 85, 247, 0.12);
-  box-shadow: 0 6px 24px rgba(100, 60, 160, 0.07);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  box-shadow: 0 8px 28px rgba(100, 60, 160, 0.08);
 }
 
 .card-title {
@@ -1168,19 +1172,24 @@ body {
 .crisis-fab {
   position: fixed;
   bottom: 84px;
-  right: calc(50% - 210px);
+  right: calc(50% - 206px);
   z-index: var(--z-float);
-  width: 46px; height: 46px;
+  width: 44px; height: 44px;
   border-radius: 50%;
-  background: #C75B76;
+  background: linear-gradient(135deg, #F43F5E, #BE123C);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 24px rgba(199, 91, 118, 0.38);
+  box-shadow: 0 8px 24px rgba(244, 63, 94, 0.45);
   animation: pulseSoft 2.5s ease-in-out infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-@media (max-width: 440px) { .crisis-fab { right: 16px; } }
+.crisis-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 10px 28px rgba(244, 63, 94, 0.6);
+}
+@media (max-width: 440px) { .crisis-fab { right: 14px; } }
 
 /* ── 17. Bottom Dock ─────────────────────────────────────────── */
 .bottom-dock {
@@ -1425,38 +1434,10 @@ body {
 .crisis-lock-overlay.active { opacity: 1; pointer-events: auto; }
 
 /* ============================================================
-   CALMING SANCTUARY UPGRADES & QUICK EXIT BUTTON
+   CALMING SANCTUARY UPGRADES
    Additions: SWM Fullscreen, Breathing Ring, Mist Particles,
-   Enhanced Tapping, TIPP Progress, Quick Exit
+   Enhanced Tapping, TIPP Progress
    ============================================================ */
-
-/* ---- QUICK EXIT BUTTON (global, fixed) ---- */
-#quick-exit-btn {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 99999;
-  padding: 6px 13px;
-  background: rgba(239, 68, 68, 0.88);
-  border: 1px solid rgba(239, 68, 68, 0.55);
-  border-radius: 999px;
-  color: #FFFFFF;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 12px rgba(239,68,68,0.35);
-  font-family: var(--font-sans);
-}
-#quick-exit-btn:hover {
-  background: rgba(220, 38, 38, 0.98);
-  transform: scale(1.05);
-  box-shadow: 0 4px 18px rgba(239,68,68,0.5);
-}
-#quick-exit-btn:active { transform: scale(0.97); }
 
 /* ---- SIT WITH ME FULLSCREEN OVERLAY ---- */
 #swm-fullscreen-overlay {

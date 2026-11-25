@@ -20,6 +20,16 @@ def _as_int(value, default: int, minimum: int = 1) -> int:
         return default
 
 
+def _as_email_set(value) -> frozenset:
+    """Turn 'a@x.com, B@y.com' into a set of lowercase emails; blanks are ignored."""
+    return frozenset(email.strip().lower() for email in (value or "").split(",") if email.strip())
+
+
+def _as_email_set(value) -> frozenset:
+    """Turn 'a@x.com, B@y.com' into a set of lowercase emails; blanks are ignored."""
+    return frozenset(email.strip().lower() for email in (value or "").split(",") if email.strip())
+
+
 class Config:
     """Settings read once at application start; never return secret values to clients."""
 
@@ -44,6 +54,10 @@ class Config:
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "")
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     COUNSELOR_API_KEY = os.environ.get("COUNSELOR_API_KEY", "")
+    # Emails allowed to sign in to the psychiatrist dashboard with their own Supabase account
+    CLINICIAN_EMAILS = _as_email_set(os.environ.get("CLINICIAN_EMAILS"))
+    # Emails allowed to sign in to the psychiatrist dashboard with their own Supabase account
+    CLINICIAN_EMAILS = _as_email_set(os.environ.get("CLINICIAN_EMAILS"))
 
     RATE_LIMIT_WINDOW_SECONDS = _as_int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS"), 60)
     CHECKIN_RATE_LIMIT = _as_int(os.environ.get("CHECKIN_RATE_LIMIT"), 10)

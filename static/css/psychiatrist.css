@@ -1,0 +1,247 @@
+/* ============================================================
+   AegisMind — Clinician Console
+   Additions on top of mobile.css (loaded first). Uses the same
+   tokens: violet palette, risk-low indigo / amber / rose, NO GREEN.
+   ============================================================ */
+
+/* ── Header: live status ───────────────────────────────────── */
+.psy-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 10.5px; font-weight: 700; color: var(--text-secondary);
+  white-space: nowrap;
+}
+.psy-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-muted);
+}
+.psy-live.is-live .psy-live-dot {
+  background: var(--risk-low);
+  box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.6);
+  animation: psyLivePulse 2s infinite;
+}
+.psy-live.is-offline { color: var(--risk-moderate); border-color: rgba(245, 158, 11, 0.4); }
+.psy-live.is-offline .psy-live-dot { background: var(--risk-moderate); }
+@keyframes psyLivePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(129, 140, 248, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); }
+}
+
+.psy-demo-banner {
+  background: rgba(245, 158, 11, 0.14);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  color: #FDE68A;
+  font-size: 11px; font-weight: 700; text-align: center;
+  padding: 5px 12px;
+}
+.psy-demo-banner[hidden] { display: none; }
+
+/* ── Forms ─────────────────────────────────────────────────── */
+.psy-input {
+  width: 100%; height: 44px; padding: 0 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-sans); font-size: 13px;
+  outline: none; margin-bottom: 10px;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.psy-input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+}
+#login-form .psy-input { margin-bottom: 10px; }
+#login-form #access-code { letter-spacing: 0.08em; }
+#login-switch-method, #login-register-toggle { width: 100%; background: none; border: 0; cursor: pointer; font-family: inherit; }
+#login-switch-method[hidden], #login-register-toggle[hidden] { display: none; }
+.psy-form-error { min-height: 16px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--risk-critical); }
+.psy-link-row {
+  display: block; text-align: center; margin-top: 14px;
+  font-size: 12px; font-weight: 700; color: var(--brand-secondary); text-decoration: none;
+}
+.psy-fineprint { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.5; padding: 4px 12px; }
+
+/* ── Dock badge ────────────────────────────────────────────── */
+.dock-badge {
+  position: absolute; top: 2px; left: calc(50% + 6px);
+  min-width: 17px; height: 17px; padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--risk-critical); color: #FFFFFF;
+  font-style: normal; font-size: 10px; font-weight: 800; line-height: 17px; text-align: center;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.5);
+}
+.dock-badge[hidden] { display: none; }
+
+/* ── Emergency hero ────────────────────────────────────────── */
+.psy-hero {
+  border-radius: 20px; padding: 16px; margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.14), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  display: flex; align-items: center; gap: 14px;
+}
+.psy-hero.is-critical {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(168, 85, 247, 0.08));
+  border-color: rgba(244, 63, 94, 0.55);
+  animation: psyHeroGlow 2.4s ease-in-out infinite;
+}
+@keyframes psyHeroGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.0), 0 8px 28px rgba(0, 0, 0, 0.28); }
+  50%      { box-shadow: 0 0 26px 2px rgba(244, 63, 94, 0.28), 0 8px 28px rgba(0, 0, 0, 0.28); }
+}
+.psy-hero-number {
+  width: 58px; height: 58px; flex-shrink: 0;
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 800; color: #FFFFFF;
+  background: var(--brand-gradient);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+.psy-hero.is-critical .psy-hero-number {
+  background: linear-gradient(135deg, #F43F5E, #BE123C);
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.45);
+}
+.psy-hero-title { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
+.psy-hero-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+
+/* ── Filter chips ──────────────────────────────────────────── */
+.psy-chips { padding: 2px 0 10px; }
+.psy-chips .chat-chip.active {
+  background: var(--brand-gradient); color: #FFFFFF;
+  border-color: transparent; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* ── Alert cards ───────────────────────────────────────────── */
+.psy-alert { position: relative; border-left-width: 3px; }
+.psy-alert.sev1 { border-left-color: var(--risk-critical); background: linear-gradient(90deg, rgba(244, 63, 94, 0.08), rgba(255, 255, 255, 0.02) 40%); }
+.psy-alert.sev2 { border-left-color: var(--risk-moderate); }
+.psy-alert-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.psy-alert-who { flex: 1; min-width: 0; }
+.psy-alert-who strong { display: block; font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.psy-quote {
+  margin: 0 0 8px; padding: 8px 10px;
+  border-radius: 10px; border-left: 2px solid var(--brand-secondary);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 12.5px; line-height: 1.45; color: var(--text-primary); font-style: italic;
+  word-break: break-word;
+}
+.psy-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.psy-tag {
+  padding: 2px 8px; border-radius: var(--r-full);
+  font-size: 10px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.psy-tag.source-chat { background: rgba(139, 92, 246, 0.16); border-color: rgba(139, 92, 246, 0.4); color: var(--brand-lavender); }
+.psy-tag.status-new { background: var(--risk-critical-bg); border-color: rgba(244, 63, 94, 0.4); color: var(--risk-critical); }
+.psy-tag.status-acknowledged { background: var(--risk-moderate-bg); border-color: rgba(245, 158, 11, 0.4); color: var(--risk-moderate); }
+.psy-tag.status-in_contact { background: var(--risk-low-bg); border-color: rgba(129, 140, 248, 0.4); color: var(--risk-low); }
+.psy-tag.status-resolved { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+.psy-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.psy-actions .btn { flex: 1 1 auto; width: auto; min-width: 0; }
+.psy-actions .btn-primary { height: 32px; font-size: 11.5px; border-radius: 10px; }
+
+.psy-empty {
+  text-align: center; padding: 28px 16px; border-radius: 16px;
+  border: 1px dashed var(--border-mid); color: var(--text-secondary);
+  font-size: 12.5px; line-height: 1.5;
+}
+.psy-empty strong { display: block; font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
+
+/* ── Patient rows ──────────────────────────────────────────── */
+.psy-patient { display: flex; align-items: center; gap: 10px; cursor: pointer; transition: border-color var(--t-fast), transform var(--t-fast) var(--ease-out); }
+.psy-patient:hover { border-color: var(--border-mid); transform: translateY(-1px); }
+.psy-patient:focus-visible { outline: 2px solid var(--brand-secondary); outline-offset: 2px; }
+.psy-patient .post-avatar { width: 38px; height: 38px; border-radius: 12px; font-size: 12px; flex-shrink: 0; }
+.psy-patient-main { flex: 1; min-width: 0; }
+.psy-patient-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+.psy-patient-top strong { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.psy-patient-meta { font-size: 10.5px; color: var(--text-muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.psy-patient-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.psy-patient-side canvas { width: 72px; height: 28px; display: block; }
+.psy-patient-dpi { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); }
+.psy-trend.up { color: var(--risk-critical); }
+.psy-trend.down { color: var(--risk-low); }
+.psy-open-pill {
+  padding: 1px 7px; border-radius: var(--r-full);
+  background: var(--risk-critical-bg); color: var(--risk-critical);
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase;
+}
+
+/* ── Insights ──────────────────────────────────────────────── */
+.psy-tile-critical .stat-tile-value { color: var(--risk-critical); }
+.psy-tile-moderate .stat-tile-value { color: var(--risk-moderate); }
+.psy-dist-bar {
+  display: flex; height: 12px; border-radius: var(--r-full); overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.psy-dist-bar span { display: block; height: 100%; transition: width var(--t-mid) var(--ease-out); }
+.psy-dist-bar .low { background: var(--risk-low); }
+.psy-dist-bar .moderate { background: var(--risk-moderate); }
+.psy-dist-bar .critical { background: var(--risk-critical); }
+.psy-dist-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+.psy-dist-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+/* ── Patient detail ────────────────────────────────────────── */
+.psy-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--brand-secondary); font: 700 12px var(--font-sans);
+  padding: 4px 6px 10px 0;
+}
+.pd-hero-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.pd-hero-top .profile-avatar-ring { margin: 0; width: 48px; height: 48px; font-size: 16px; }
+.pd-hero-name { flex: 1; min-width: 0; }
+.pd-hero-name strong { display: block; font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.pd-hero-name span { font-size: 10.5px; color: var(--text-muted); font-family: var(--font-mono); }
+.pd-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+#pd-gauge { width: 72px; height: 72px; display: block; }
+#pd-spark { width: 100%; height: 32px; display: block; }
+
+.pd-tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 3px; margin: 4px 0 12px;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.pd-tab {
+  min-height: 36px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--text-secondary);
+  font: 700 12px var(--font-sans); cursor: pointer;
+}
+.pd-tab.active { color: #FFFFFF; background: var(--brand-gradient); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); }
+
+.pd-trend-canvas { width: 100%; height: 150px; display: block; }
+.pd-chart-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 10px; color: var(--text-muted); font-weight: 600; }
+.pd-chart-legend i { display: inline-block; width: 10px; height: 2px; margin-right: 5px; vertical-align: middle; }
+
+.pd-checkin { padding: 12px 14px; }
+.pd-checkin-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pd-checkin-head .post-time { flex: 1; }
+.pd-checkin-dpi { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--text-primary); }
+.pd-checkin-text { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); margin-bottom: 8px; word-break: break-word; }
+
+.psy-chat { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 8px; }
+.psy-chat .chat-bubble-wrap { max-width: 92%; }
+.psy-chat-time { font-size: 9.5px; color: var(--text-muted); margin-top: 3px; }
+.psy-chat .chat-bubble-wrap.user .psy-chat-time { text-align: right; }
+.psy-chat .chat-bubble-wrap.user .chat-bubble { word-break: break-word; }
+.psy-chat .is-crisis .chat-bubble {
+  background: linear-gradient(135deg, #F43F5E, #BE123C);
+  box-shadow: 0 4px 16px rgba(244, 63, 94, 0.4);
+}
+.psy-crisis-flag { font-size: 10px; font-weight: 800; color: var(--risk-critical); margin-top: 3px; text-align: right; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.psy-case-notes { margin: 8px 0 0; }
+.psy-case-notes .journal-textarea { min-height: 72px; }
+
+/* ── Light theme touch-ups ─────────────────────────────────── */
+[data-theme="light"] .psy-quote { background: rgba(168, 85, 247, 0.07); }
+[data-theme="light"] .psy-input { background: var(--bg-input); }
+[data-theme="light"] .psy-demo-banner { color: #92400E; }
+[data-theme="light"] .modal-card { background: #FFFFFF; }
+[data-theme="light"] .profile-stat { background: #F6F4FA; }

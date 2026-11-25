@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#08080C" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="AegisMind Clinician Console — emergency alerts and patient history for psychiatrists" />
+  <title>AegisMind Clinician</title>
+
+  <!-- Installs as its own app, separate from the patient app -->
+  <link rel="manifest" href="/static/psychiatrist-manifest.json" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Same design system as the patient app, plus clinician-only additions -->
+  <link rel="stylesheet" href="/static/css/mobile.css" />
+  <link rel="stylesheet" href="/static/css/psychiatrist.css" />
+</head>
+<body>
+
+<div class="bg-atmosphere" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div id="toast-container" role="status" aria-live="polite"></div>
+
+<!-- ═══════════ CLINICIAN SIGN-IN ═══════════ -->
+<div id="login-gate" class="modal-center" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <div class="modal-card">
+    <div class="brand-logo" style="width:48px;height:48px;margin:0 auto 12px;border-radius:14px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <h2 class="modal-title text-center" id="login-title">Clinician Sign-In</h2>
+    <p class="modal-subtitle text-center" id="login-subtitle" style="margin-bottom:16px;">Patient histories are confidential. Sign in with your clinician account to continue.</p>
+    <form id="login-form">
+      <div id="login-account-fields">
+        <input type="email" id="clinician-email" class="psy-input" placeholder="Email" autocomplete="username" />
+        <input type="password" id="clinician-password" class="psy-input" placeholder="Password" autocomplete="current-password" />
+      </div>
+      <div id="login-setup-fields" hidden>
+        <input type="password" id="setup-code" class="psy-input" placeholder="Setup code from your administrator" autocomplete="off" />
+      </div>
+      <div id="login-code-fields" hidden>
+        <input type="password" id="access-code" class="psy-input" placeholder="Access code" autocomplete="off" />
+      </div>
+      <p id="login-error" class="psy-form-error" role="alert"></p>
+      <button type="submit" class="btn btn-primary mt-3" id="login-submit">Sign In</button>
+      <button type="button" id="login-register-toggle" class="psy-link-row" hidden></button>
+      <button type="button" id="login-switch-method" class="psy-link-row" hidden></button>
+    </form>
+    <a href="/" class="psy-link-row">← Back to patient app</a>
+  </div>
+</div>
+
+<!-- ═══════════ CONFIRM DIALOG ═══════════ -->
+<div id="confirm-modal" class="modal-center" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="modal-card">
+    <h3 class="modal-title" id="confirm-title">Are you sure?</h3>
+    <p class="modal-subtitle" id="confirm-text"></p>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-secondary" style="flex:1;" id="confirm-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;" id="confirm-ok" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP SHELL (same 440px frame as the patient app) ═══════════ -->
+<div id="app-shell">
+
+  <header class="app-header" role="banner">
+    <div class="header-brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">AegisMind</span>
+        <span class="brand-tagline">Clinician Console</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="psy-live" id="live-pill" title="Live connection status"><span class="psy-live-dot"></span><span id="live-text">Connecting</span></span>
+      <button class="btn-icon" id="btn-sound" type="button" title="Mute or unmute emergency sound" aria-label="Toggle emergency alert sound" aria-pressed="true">
+        <svg id="icon-sound-on" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <svg id="icon-sound-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+      <button class="btn-icon" id="btn-theme" type="button" title="Toggle theme" aria-label="Toggle dark and light theme">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="psy-demo-banner" id="demo-banner" hidden>Demo data — nothing here is a real patient</div>
+
+  <main class="panels-container">
+
+    <!-- ══════ PANEL 1: EMERGENCY ALERTS ══════ -->
+    <section class="panel active" id="panel-alerts">
+      <div class="psy-hero" id="alerts-hero"></div>
+
+      <div class="chat-chips-row psy-chips" id="alert-filters" role="tablist" aria-label="Filter alerts">
+        <button class="chat-chip active" data-filter="all" type="button">All</button>
+        <button class="chat-chip" data-filter="sev1" type="button">SEV-1</button>
+        <button class="chat-chip" data-filter="sev2" type="button">SEV-2</button>
+        <button class="chat-chip" data-filter="chat" type="button">Chatbot</button>
+        <button class="chat-chip" data-filter="checkin" type="button">Check-in</button>
+        <button class="chat-chip" data-filter="new" type="button">Unacknowledged</button>
+      </div>
+
+      <div id="alerts-list"></div>
+    </section>
+
+    <!-- ══════ PANEL 2: PATIENTS ══════ -->
+    <section class="panel" id="panel-patients">
+      <div class="section-heading" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Patients (<span id="patients-total">0</span>)</span>
+      </div>
+
+      <input type="search" id="patient-search" class="psy-input" placeholder="Search by alias…" autocomplete="off" aria-label="Search patients by alias" />
+
+      <div class="chat-chips-row psy-chips" id="patient-filters" role="tablist" aria-label="Filter patients">
+        <button class="chat-chip active" data-filter="all" type="button">All</button>
+        <button class="chat-chip" data-filter="critical" type="button">Critical</button>
+        <button class="chat-chip" data-filter="moderate" type="button">Moderate</button>
+        <button class="chat-chip" data-filter="low" type="button">Low</button>
+        <button class="chat-chip" data-filter="open" type="button">Open cases</button>
+      </div>
+
+      <div id="patients-list"></div>
+    </section>
+
+    <!-- ══════ PANEL 3: INSIGHTS ══════ -->
+    <section class="panel" id="panel-insights">
+      <div class="section-heading" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Caseload Overview</span>
+      </div>
+
+      <div class="quick-stats" id="insight-tiles"></div>
+
+      <div class="card">
+        <div class="card-title"><span>Patients by risk</span></div>
+        <div class="psy-dist-bar" id="risk-dist-bar"></div>
+        <div class="psy-dist-legend" id="risk-dist-legend"></div>
+      </div>
+
+      <div class="section-heading">Needs attention</div>
+      <div id="attention-list"></div>
+
+      <div class="insight-card">
+        <div class="insight-title">How patients are ranked</div>
+        <p class="insight-text">Open cases are ordered SEV-1 first, then critical, then moderate, newest first. DPI (Distress Prediction Index, 0–1) is calculated from check-ins only. A crisis phrase typed to the chatbot raises a SEV-1 flag but does not change the DPI.</p>
+      </div>
+    </section>
+
+    <!-- ══════ PANEL 4: ACCOUNT ══════ -->
+    <section class="panel" id="panel-account">
+      <div class="profile-hero">
+        <div class="profile-avatar-ring">Dr</div>
+        <h2 class="profile-alias" style="font-size:16px;font-weight:700;">Clinician</h2>
+        <div class="profile-token" id="account-mode" style="font-size:11px;color:var(--text-muted);">—</div>
+      </div>
+
+      <div class="card">
+        <div class="settings-row" id="row-sound">
+          <span>Emergency alert sound</span>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle-sound" checked />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="settings-row" id="row-notify">
+          <span>System notifications</span>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle-notify" />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="settings-row" id="row-test-alert">
+          <span>Send a test alert</span>
+          <span style="font-size:12px;color:var(--brand-secondary);">Test ›</span>
+        </div>
+        <div class="settings-row" id="row-theme">
+          <span>Dark mode</span>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle-theme" checked />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <a href="/" class="settings-row" style="text-decoration:none;color:inherit;">
+          <span>Open patient app</span>
+          <span style="font-size:12px;color:var(--text-muted);">Open ›</span>
+        </a>
+        <div class="settings-row" id="row-signout" style="border-bottom:none;">
+          <span style="color:var(--risk-critical);">Sign out</span>
+          <span style="font-size:12px;color:var(--text-muted);">Exit ›</span>
+        </div>
+      </div>
+
+      <p class="psy-fineprint">Every time you open a patient record, the access is written to the audit log.</p>
+    </section>
+
+    <!-- ══════ PATIENT DETAIL (opened from alerts or patients) ══════ -->
+    <section class="panel" id="panel-patient">
+      <button class="psy-back" id="btn-back" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+        <span id="back-label">Back</span>
+      </button>
+
+      <div id="patient-hero"></div>
+
+      <div class="pd-tabs" role="tablist" aria-label="Patient record sections">
+        <button class="pd-tab active" data-tab="timeline" type="button" role="tab">Timeline</button>
+        <button class="pd-tab" data-tab="chat" type="button" role="tab">Chat</button>
+        <button class="pd-tab" data-tab="cases" type="button" role="tab">Cases</button>
+      </div>
+
+      <div id="patient-tab-body"></div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM DOCK -->
+  <nav class="bottom-dock" role="navigation" aria-label="Clinician navigation">
+    <button class="dock-item active" id="dock-alerts" data-panel="alerts" type="button" aria-label="Emergency alerts">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Alerts</span>
+      <i class="dock-badge" id="dock-alert-badge" hidden>0</i>
+    </button>
+    <button class="dock-item" id="dock-patients" data-panel="patients" type="button" aria-label="Patients">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Patients</span>
+    </button>
+    <button class="dock-item" id="dock-insights" data-panel="insights" type="button" aria-label="Insights">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Insights</span>
+    </button>
+    <button class="dock-item" id="dock-account" data-panel="account" type="button" aria-label="Account">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Account</span>
+    </button>
+  </nav>
+
+</div>
+
+<script>
+  window.AEGIS_API_BASE_URL = {{ (api_base_url or '')|tojson }};
+</script>
+<script src="/static/js/psychiatrist.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ Persistent Fallback: Disk-backed SQLite (data/aegismind_persistent.db) to guaran
 persistence across server restarts even before cloud DDL migrations are executed.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -116,7 +117,22 @@ def init_sqlite_tables():
                 created_at TEXT
             )
         """)
+        # Psychiatrist dashboard fields on cases created before this feature existed
+        _add_missing_columns(cursor, "counselor_cases", {
+            "source": "TEXT DEFAULT 'checkin'",
+            "status": "TEXT DEFAULT 'new'",
+            "notes": "TEXT DEFAULT ''",
+            "acknowledged_at": "TEXT",
+        })
         conn.commit()
+
+
+def _add_missing_columns(cursor, table: str, columns: Dict[str, str]):
+    """Add columns to an existing SQLite table when an older database file lacks them."""
+    existing_columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+    for column_name, column_definition in columns.items():
+        if column_name not in existing_columns:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column_name} {column_definition}")
 
 
 def init_database(supabase_url: str, supabase_key: str):
@@ -611,6 +627,7 @@ def save_counselor_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         "jitsi_room": case_data.get("jitsi_room", f"AegisMind-Case-{case_id}"),
         "reviewed": 1 if case_data.get("reviewed") else 0,
         "sev": case_data.get("sev", "SEV-2"),
+        "source": case_data.get("source", "checkin"),
         "flagged_at": now_iso,
     }
 
@@ -628,6 +645,7 @@ def save_counselor_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
                 "jitsi_room": record["jitsi_room"],
                 "reviewed": bool(record["reviewed"]),
                 "sev": record["sev"],
+                "source": record["source"],
                 "flagged_at": now_iso
             }).execute()
         except Exception as e:
@@ -638,8 +656,8 @@ def save_counselor_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         with get_sqlite_conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO counselor_cases (id, user_id, alias, dpi, delta_dpi, risk_level, triggers, text_fragment, jitsi_room, reviewed, sev, flagged_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO counselor_cases (id, user_id, alias, dpi, delta_dpi, risk_level, triggers, text_fragment, jitsi_room, reviewed, sev, source, flagged_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 record["id"],
                 record["user_id"],
@@ -652,6 +670,7 @@ def save_counselor_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
                 record["jitsi_room"],
                 record["reviewed"],
                 record["sev"],
+                record["source"],
                 record["flagged_at"]
             ))
             conn.commit()
@@ -725,3 +744,277 @@ def mark_counselor_case_reviewed(case_id: str) -> bool:
     except Exception as e:
         logger.error(f"SQLite review error: {e}")
     return False
+
+
+# ---------------------------------------------------------------------------
+# Psychiatrist Dashboard
+# ---------------------------------------------------------------------------
+# These read the local persistent store. Patient flows always write there (even
+# when Supabase is configured), so the dashboard sees the same data either way.
+# Clinicians identify a patient by an opaque patient_ref, never by the real user
+# id, because for anonymous users that id is also their login token.
+
+CASE_STATUSES = ("new", "acknowledged", "in_contact", "resolved")
+
+_CASE_PRIORITY_ORDER = """
+    CASE sev WHEN 'SEV-1' THEN 0 ELSE 1 END,
+    CASE risk_level WHEN 'critical' THEN 0 WHEN 'moderate' THEN 1 ELSE 2 END,
+    flagged_at DESC
+"""
+_RISK_RANK = {"critical": 0, "moderate": 1, "low": 2}
+
+
+def patient_ref_for(user_id: str) -> str:
+    """Stable one-way reference a clinician can use in URLs instead of the real user id."""
+    return hashlib.sha256(f"aegismind-patient:{user_id}".encode("utf-8")).hexdigest()[:16]
+
+
+def _case_for_clinician(row) -> Dict[str, Any]:
+    """Shape a counselor_cases row for the dashboard, without the real user id."""
+    case = dict(row)
+    try:
+        triggers = json.loads(case.get("triggers") or "[]")
+    except (TypeError, ValueError):
+        triggers = []
+    return {
+        "id": case["id"],
+        "patient_ref": patient_ref_for(case.get("user_id") or ""),
+        "alias": case.get("alias") or "Anonymous",
+        "sev": case.get("sev") or "SEV-2",
+        "risk_level": case.get("risk_level") or "moderate",
+        "dpi": case.get("dpi") or 0.0,
+        "delta_dpi": case.get("delta_dpi") or 0.0,
+        "triggers": triggers,
+        "text_fragment": case.get("text_fragment") or "",
+        "source": case.get("source") or "checkin",
+        "status": case.get("status") or "new",
+        "notes": case.get("notes") or "",
+        "reviewed": bool(case.get("reviewed")),
+        "flagged_at": case.get("flagged_at"),
+        "acknowledged_at": case.get("acknowledged_at"),
+        "reviewed_at": case.get("reviewed_at"),
+        "jitsi_room": case.get("jitsi_room"),
+        "jitsi_url": f"https://meet.jit.si/{case.get('jitsi_room') or 'AegisMind'}",
+    }
+
+
+def _patient_summary(user_id: str, alias: str, checkins: list, open_cases: list, last_chat_at: Optional[str]) -> Dict[str, Any]:
+    """One patient's headline numbers; checkins must be oldest-first."""
+    last_checkin = checkins[-1] if checkins else None
+    has_open_sev1 = any(case["sev"] == "SEV-1" for case in open_cases)
+    if has_open_sev1:
+        risk_level = "critical"
+    elif last_checkin and last_checkin["risk_level"]:
+        risk_level = last_checkin["risk_level"]
+    else:
+        risk_level = "moderate" if open_cases else "low"
+    dpi_values = [c["dpi"] for c in checkins if c["dpi"] is not None]
+    return {
+        "patient_ref": patient_ref_for(user_id),
+        "alias": alias or "Anonymous",
+        "risk_level": risk_level,
+        "dpi": round(last_checkin["dpi"], 3) if last_checkin and last_checkin["dpi"] is not None else None,
+        "delta_dpi": round(last_checkin["delta_dpi"], 3) if last_checkin and last_checkin["delta_dpi"] is not None else None,
+        "avg_dpi": round(sum(dpi_values) / len(dpi_values), 3) if dpi_values else None,
+        "sparkline": [round(value, 3) for value in dpi_values[-7:]],
+        "checkin_count": len(checkins),
+        "last_checkin_at": last_checkin["created_at"] if last_checkin else None,
+        "last_chat_at": last_chat_at,
+        "open_cases": len(open_cases),
+        "open_sev1": has_open_sev1,
+    }
+
+
+def get_psychiatrist_alerts(limit: int = 50) -> List[Dict[str, Any]]:
+    """Open cases, most urgent first: SEV-1, then critical, then moderate, newest first."""
+    try:
+        with get_sqlite_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM counselor_cases WHERE reviewed = 0 ORDER BY {_CASE_PRIORITY_ORDER} LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [_case_for_clinician(row) for row in rows]
+    except Exception as e:
+        logger.error(f"SQLite get_psychiatrist_alerts error: {e}")
+        return []
+
+
+def get_psychiatrist_counts() -> Dict[str, int]:
+    """Headline numbers for the dashboard banner and insights tab."""
+    start_of_today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    counts = {"open_sev1": 0, "open_sev2": 0, "unacknowledged": 0, "resolved_today": 0}
+    queries = {
+        "open_sev1": ("reviewed = 0 AND sev = 'SEV-1'", ()),
+        "open_sev2": ("reviewed = 0 AND sev != 'SEV-1'", ()),
+        "unacknowledged": ("reviewed = 0 AND COALESCE(status, 'new') = 'new'", ()),
+        "resolved_today": ("reviewed = 1 AND reviewed_at >= ?", (start_of_today,)),
+    }
+    try:
+        with get_sqlite_conn() as conn:
+            for name, (where_clause, params) in queries.items():
+                counts[name] = conn.execute(
+                    f"SELECT COUNT(*) FROM counselor_cases WHERE {where_clause}", params
+                ).fetchone()[0]
+    except Exception as e:
+        logger.error(f"SQLite get_psychiatrist_counts error: {e}")
+    return counts
+
+
+def get_psychiatrist_patients() -> List[Dict[str, Any]]:
+    """Every patient with activity, emergency patients first."""
+    try:
+        with get_sqlite_conn() as conn:
+            # Step 1: load the raw rows once instead of querying per patient
+            aliases = {row["user_id"]: row["alias"] for row in conn.execute("SELECT user_id, alias FROM profiles")}
+            checkins_by_patient: Dict[str, list] = {}
+            for row in conn.execute(
+                "SELECT user_id, dpi, delta_dpi, risk_level, created_at FROM check_ins ORDER BY created_at ASC"
+            ):
+                checkins_by_patient.setdefault(row["user_id"], []).append(row)
+            open_cases_by_patient: Dict[str, list] = {}
+            for row in conn.execute("SELECT user_id, sev, alias FROM counselor_cases WHERE reviewed = 0"):
+                open_cases_by_patient.setdefault(row["user_id"], []).append(row)
+            last_chat_by_patient = {
+                row["user_id"]: row["last_at"]
+                for row in conn.execute("SELECT user_id, MAX(created_at) AS last_at FROM chat_messages GROUP BY user_id")
+            }
+    except Exception as e:
+        logger.error(f"SQLite get_psychiatrist_patients error: {e}")
+        return []
+
+    # Step 2: build one summary per patient who has any activity
+    patient_ids = set(checkins_by_patient) | set(open_cases_by_patient) | set(last_chat_by_patient)
+    patient_ids.discard(None)
+    patients = []
+    for user_id in patient_ids:
+        open_cases = open_cases_by_patient.get(user_id, [])
+        alias = aliases.get(user_id) or (open_cases[0]["alias"] if open_cases else None)
+        patients.append(_patient_summary(
+            user_id, alias, checkins_by_patient.get(user_id, []), open_cases, last_chat_by_patient.get(user_id)
+        ))
+
+    # Step 3: emergencies first, then by risk, then by how high the DPI is
+    patients.sort(key=lambda p: (not p["open_sev1"], _RISK_RANK.get(p["risk_level"], 2), -(p["dpi"] or 0)))
+    return patients
+
+
+def _find_user_id_by_patient_ref(conn, patient_ref: str) -> Optional[str]:
+    rows = conn.execute(
+        "SELECT user_id FROM profiles UNION SELECT user_id FROM check_ins "
+        "UNION SELECT user_id FROM counselor_cases UNION SELECT user_id FROM chat_messages"
+    ).fetchall()
+    for row in rows:
+        if row["user_id"] and patient_ref_for(row["user_id"]) == patient_ref:
+            return row["user_id"]
+    return None
+
+
+def get_psychiatrist_patient_detail(patient_ref: str) -> Optional[Dict[str, Any]]:
+    """Full history for one patient: check-ins, chat transcript and every case."""
+    try:
+        with get_sqlite_conn() as conn:
+            # Step 1: resolve the opaque reference back to the real user id
+            user_id = _find_user_id_by_patient_ref(conn, patient_ref)
+            if not user_id:
+                return None
+
+            # Step 2: load profile, latest check-ins, latest chat turns and all cases
+            profile = conn.execute("SELECT alias, created_at FROM profiles WHERE user_id = ?", (user_id,)).fetchone()
+            checkin_total = conn.execute(
+                "SELECT COUNT(*) FROM check_ins WHERE user_id = ? OR token = ?", (user_id, user_id)
+            ).fetchone()[0]
+            checkin_rows = conn.execute(
+                """SELECT * FROM (
+                       SELECT id, text, valence, arousal, voice_score, nlp_json, dpi, delta_dpi, risk_level, created_at
+                       FROM check_ins WHERE user_id = ? OR token = ?
+                       ORDER BY created_at DESC LIMIT 60
+                   ) ORDER BY created_at ASC""",
+                (user_id, user_id),
+            ).fetchall()
+            chat_rows = conn.execute(
+                """SELECT * FROM (
+                       SELECT sender, message, created_at
+                       FROM chat_messages WHERE user_id = ? OR token = ?
+                       ORDER BY created_at DESC LIMIT 100
+                   ) ORDER BY created_at ASC""",
+                (user_id, user_id),
+            ).fetchall()
+            case_rows = conn.execute(
+                "SELECT * FROM counselor_cases WHERE user_id = ? ORDER BY flagged_at DESC", (user_id,)
+            ).fetchall()
+    except Exception as e:
+        logger.error(f"SQLite get_psychiatrist_patient_detail error: {e}")
+        return None
+
+    # Step 3: build the response from those rows
+    cases = [_case_for_clinician(row) for row in case_rows]
+    open_cases = [row for row in case_rows if not row["reviewed"]]
+    last_chat_at = chat_rows[-1]["created_at"] if chat_rows else None
+    alias = profile["alias"] if profile else (case_rows[0]["alias"] if case_rows else None)
+
+    checkins = []
+    for row in checkin_rows:
+        checkin = dict(row)
+        try:
+            checkin["nlp"] = json.loads(checkin.pop("nlp_json") or "{}")
+        except (TypeError, ValueError):
+            checkin["nlp"] = {}
+        checkins.append(checkin)
+
+    summary = _patient_summary(user_id, alias, checkin_rows, open_cases, last_chat_at)
+    summary["checkin_count"] = checkin_total
+    summary["first_seen"] = (profile["created_at"] if profile else None) or (checkins[0]["created_at"] if checkins else None)
+    summary["checkins"] = checkins
+    summary["chat"] = [dict(row) for row in chat_rows]
+    summary["cases"] = cases
+    return summary
+
+
+def update_psychiatrist_case(case_id: str, status: Optional[str] = None, notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Move a case through its status steps and/or save the clinician's note."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if status == "resolved":
+        # Marks the case reviewed in Supabase and the local store so it leaves the queue everywhere
+        mark_counselor_case_reviewed(case_id)
+
+    changes: List[str] = []
+    values: List[Any] = []
+    if status is not None:
+        changes.append("status = ?")
+        values.append(status)
+        if status in ("acknowledged", "in_contact", "resolved"):
+            changes.append("acknowledged_at = COALESCE(acknowledged_at, ?)")
+            values.append(now_iso)
+    if notes is not None:
+        changes.append("notes = ?")
+        values.append(notes)
+
+    try:
+        with get_sqlite_conn() as conn:
+            if changes:
+                cursor = conn.execute(
+                    f"UPDATE counselor_cases SET {', '.join(changes)} WHERE id = ?", (*values, case_id)
+                )
+                if cursor.rowcount == 0:
+                    return None
+                conn.commit()
+            row = conn.execute("SELECT * FROM counselor_cases WHERE id = ?", (case_id,)).fetchone()
+            if row and changes and _supabase_client:
+                _push_case_progress_to_supabase(case_id, row)
+            return _case_for_clinician(row) if row else None
+    except Exception as e:
+        logger.error(f"SQLite update_psychiatrist_case error: {e}")
+        return None
+
+
+def _push_case_progress_to_supabase(case_id: str, local_row) -> None:
+    """Copy the case's status, note and first-acknowledged time to Supabase (needs the 02 psychiatrist migration)."""
+    try:
+        _supabase_client.from_("counselor_cases").update({
+            "status": local_row["status"],
+            "notes": local_row["notes"],
+            "acknowledged_at": local_row["acknowledged_at"],
+        }).eq("id", case_id).execute()
+    except Exception as e:
+        logger.warning(f"Supabase update_psychiatrist_case notice: {e}")

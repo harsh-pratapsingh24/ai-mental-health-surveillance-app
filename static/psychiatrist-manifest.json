@@ -1,0 +1,26 @@
+{
+  "name": "AegisMind Clinician",
+  "short_name": "Aegis Clinician",
+  "description": "Emergency alerts and patient history for psychiatrists",
+  "start_url": "/psychiatrist",
+  "scope": "/psychiatrist",
+  "display": "standalone",
+  "background_color": "#08080C",
+  "theme_color": "#08080C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["health", "medical"],
+  "lang": "en",
+  "dir": "ltr"
+}

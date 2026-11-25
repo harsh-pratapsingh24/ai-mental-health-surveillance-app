@@ -207,6 +207,7 @@
     <!-- Back to home link -->
     <div class="auth-footer-nav">
       <a href="/" class="btn-cancel-auth">← Return to AegisMind Companion</a>
+      <a href="/psychiatrist" class="btn-cancel-auth" style="margin-left:14px;">Psychiatrist sign-in →</a>
     </div>
 
   </main>
@@ -300,8 +301,8 @@
       if (input && !input.value) input.value = existing;
     }
 
-    // Check if user is already authenticated via Supabase
-    if (supabaseClient) {
+    // Check if user is already authenticated via Supabase (skipped when switching accounts)
+    if (supabaseClient && urlParams.get('switch') !== '1') {
       supabaseClient.auth.getSession().then(({ data: { session } }) => {
         if (session && session.user) {
           syncSessionWithServer(session).then(() => {

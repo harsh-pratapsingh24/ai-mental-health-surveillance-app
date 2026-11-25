@@ -12,6 +12,7 @@ Agents:
 
 import os
 import re
+import hmac
 import uuid
 import math
 import random
@@ -414,7 +415,7 @@ def trajectory_agent(token: str, current_nlp_score: float) -> dict:
     }
 
 
-def crisis_agent(token: str, text: str, trajectory: dict) -> dict:
+def crisis_agent(token: str, text: str, trajectory: dict, source: str = "checkin") -> dict:
     case_id = uuid.uuid4().hex[:8].upper()
     profile = db.get_profile_by_id(token) or {}
     sev1_record = {
@@ -426,6 +427,7 @@ def crisis_agent(token: str, text: str, trajectory: dict) -> dict:
         "delta_dpi": trajectory.get("delta_dpi", 0.0),
         "risk_level": "critical",
         "sev": "SEV-1",
+        "source": source,
         "flagged_at": datetime.now(timezone.utc).isoformat(),
         "jitsi_room": f"AegisMind-Case-{case_id}",
         "reviewed": False,
@@ -611,7 +613,9 @@ def health():
 
 @app.route("/login")
 def login():
-    if session.get("google_user") or session.get("user_id"):
+    # "Switch account" links add ?switch=1 so a signed-in user can still open this page
+    wants_to_switch = request.args.get("switch") == "1"
+    if (session.get("google_user") or session.get("user_id")) and not wants_to_switch:
         return redirect(url_for("index"))
     return render_template(
         "login.html",
@@ -1000,6 +1004,11 @@ def chat():
     db.save_chat_message(token, "user", message)
     db.save_chat_message(token, "companion", response_data["reply"])
 
+    # A crisis phrase typed to the companion must reach the psychiatrist dashboard like a crisis check-in
+    if response_data.get("is_crisis"):
+        chat_crisis_case = crisis_agent(token, message, {"dpi": 1.0, "delta_dpi": 0.0}, source="chat")
+        log_audit_event(AuditEventType.CRISIS_ESCALATED, actor_token=token, target_id=chat_crisis_case.get("case_id"), details={"source": "chat", "risk_level": "critical"}, ip_address=request.remote_addr)
+
     return jsonify({
         "reply": response_data["reply"],
         "is_crisis": response_data.get("is_crisis", False),
@@ -1083,6 +1092,236 @@ def mark_reviewed(case_id):
 def get_jitsi_room(case_id):
     room = f"AegisMind-Case-{case_id}"
     return jsonify({"jitsi_url": f"https://meet.jit.si/{room}", "room": room})
+
+
+# ---------------------------------------------------------------------------
+# Psychiatrist dashboard
+# ---------------------------------------------------------------------------
+def clinician_code_is_valid(code: str) -> bool:
+    """Compare against COUNSELOR_API_KEY in constant time; an unset key never matches."""
+    expected_code = Config.COUNSELOR_API_KEY
+    if not expected_code or not code:
+        return False
+    return hmac.compare_digest(code.encode("utf-8"), expected_code.encode("utf-8"))
+
+
+def check_clinician_account(email: str, password: str):
+    """Check an email and password with Supabase and return the confirmed email, or None.
+
+    A separate client is used on purpose. Signing in on the app's shared client would attach this
+    person's session to it and change who the server's later database calls run as.
+    """
+    if not email or not password or not supabase_url or not supabase_anon_key:
+        return None
+    try:
+        from supabase import create_client
+        sign_in_result = create_client(supabase_url, supabase_anon_key).auth.sign_in_with_password(
+            {"email": email, "password": password}
+        )
+    except Exception as error:
+        logger.info(f"Clinician sign-in rejected by Supabase: {error}")
+        return None
+    user = sign_in_result.user if sign_in_result else None
+    return (user.email or "").strip().lower() if user else None
+
+
+def create_clinician_account(email: str, password: str) -> str:
+    """Create a confirmed Supabase login for a clinician and return "created", "already_exists" or "failed".
+
+    Only the Supabase login is created here, never a patient profile, so a clinician does not
+    show up in the patient app's data.
+    """
+    if not supabase:
+        return "failed"
+    try:
+        supabase.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"role": "clinician"},
+        })
+        return "created"
+    except Exception as error:
+        if "already" in str(error).lower() and "registered" in str(error).lower():
+            return "already_exists"
+        logger.warning(f"Clinician account creation failed: {error}")
+        return "failed"
+
+
+def development_access_is_open() -> bool:
+    """Local development with no access code and no approved clinician emails stays open."""
+    return not Config.COUNSELOR_API_KEY and not Config.CLINICIAN_EMAILS and not Config.IS_PRODUCTION
+
+
+def psychiatrist_access_required(view):
+    """Patient data is clinician-only. A signed-in patient session is never enough."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        # Step 1: clinician already signed in on this browser session
+        if session.get("is_psychiatrist"):
+            return view(*args, **kwargs)
+        # Step 2: API clients can send the access code as a header
+        if clinician_code_is_valid(request.headers.get("X-Counselor-Key", "")):
+            return view(*args, **kwargs)
+        # Step 3: local development with no sign-in configured stays open
+        if development_access_is_open():
+            return view(*args, **kwargs)
+        return jsonify({"error": "psychiatrist_authorization_required"}), 401
+    return wrapped
+
+
+@app.route("/psychiatrist")
+def psychiatrist_dashboard():
+    return render_template("psychiatrist.html", api_base_url=Config.API_BASE_URL)
+
+
+@app.route("/api/psychiatrist/session", methods=["GET"])
+def psychiatrist_session():
+    open_for_development = development_access_is_open()
+    return jsonify({
+        "authenticated": bool(session.get("is_psychiatrist")) or open_for_development,
+        "development_open_access": open_for_development,
+        "clinician_email": session.get("clinician_email", ""),
+        # The access code is a local-testing shortcut; production sign-in is by personal account only
+        "sign_in_methods": {
+            "account": bool(Config.CLINICIAN_EMAILS),
+            "access_code": bool(Config.COUNSELOR_API_KEY) and not Config.IS_PRODUCTION,
+            "registration": bool(Config.CLINICIAN_EMAILS) and bool(Config.COUNSELOR_API_KEY) and bool(supabase),
+        },
+    })
+
+
+@app.route("/api/psychiatrist/register", methods=["POST"])
+@rate_limit(Config.FORUM_RATE_LIMIT)
+def psychiatrist_register():
+    """Let an approved clinician create their own login. Needs the setup code (COUNSELOR_API_KEY)."""
+    payload = json_payload()
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    setup_code = str(payload.get("setup_code", "")).strip()
+
+    # Step 1: registration needs approved emails, a setup code and Supabase to be configured
+    if not (Config.CLINICIAN_EMAILS and Config.COUNSELOR_API_KEY and supabase):
+        return jsonify({
+            "error": "clinician_registration_not_available",
+            "message": "Clinician registration is not available. Set CLINICIAN_EMAILS and COUNSELOR_API_KEY, and connect Supabase.",
+        }), 503
+
+    # Step 2: wrong setup code and unapproved email get the same answer, so the approved list stays private
+    if not clinician_code_is_valid(setup_code) or email not in Config.CLINICIAN_EMAILS:
+        return jsonify({
+            "error": "registration_refused",
+            "message": "Check your email and setup code. Ask your administrator if you do not have the code.",
+        }), 403
+
+    # Step 3: basic password rule
+    if len(password) < 8:
+        return jsonify({"error": "password_too_short", "message": "Use a password of at least 8 characters."}), 400
+
+    # Step 4: create the Supabase login (no patient profile)
+    outcome = create_clinician_account(email, password)
+    if outcome == "already_exists":
+        return jsonify({
+            "error": "account_exists",
+            "message": "An account with this email already exists. Sign in instead, or ask an administrator to reset the password.",
+        }), 409
+    if outcome != "created":
+        return jsonify({"error": "registration_failed", "message": "Could not create the account. Please try again."}), 502
+
+    log_audit_event(AuditEventType.COUNSELOR_ACCESS, details={"action": "clinician_account_created", "email": email}, ip_address=request.remote_addr)
+    return jsonify({"status": "created"}), 201
+
+
+@app.route("/api/psychiatrist/login", methods=["POST"])
+@rate_limit(Config.FORUM_RATE_LIMIT)
+def psychiatrist_login():
+    payload = json_payload()
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+
+    # Step 1: personal account (email and password checked by Supabase)
+    if email or password:
+        if not Config.CLINICIAN_EMAILS:
+            return jsonify({
+                "error": "clinician_accounts_not_set_up",
+                "message": "Clinician accounts are not set up yet. Add the approved emails to CLINICIAN_EMAILS in .env.",
+            }), 503
+        confirmed_email = check_clinician_account(email, password)
+        # One answer for a wrong password and an unapproved account, so nobody can probe who is approved
+        if not confirmed_email or confirmed_email not in Config.CLINICIAN_EMAILS:
+            return jsonify({
+                "error": "invalid_clinician_credentials",
+                "message": "Incorrect email or password, or this account is not approved for clinician access.",
+            }), 401
+        session["is_psychiatrist"] = True
+        session["clinician_email"] = confirmed_email
+        log_audit_event(AuditEventType.COUNSELOR_ACCESS, details={"action": "psychiatrist_login", "method": "account", "email": confirmed_email}, ip_address=request.remote_addr)
+        return jsonify({"status": "ok", "clinician_email": confirmed_email})
+
+    # Step 2: shared access code, for local testing only
+    access_code = str(payload.get("access_code", "")).strip()
+    if Config.IS_PRODUCTION or not clinician_code_is_valid(access_code):
+        return jsonify({"error": "invalid_access_code", "message": "That access code is not valid."}), 401
+    session["is_psychiatrist"] = True
+    log_audit_event(AuditEventType.COUNSELOR_ACCESS, details={"action": "psychiatrist_login", "method": "access_code"}, ip_address=request.remote_addr)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/psychiatrist/logout", methods=["POST"])
+def psychiatrist_logout():
+    session.pop("is_psychiatrist", None)
+    session.pop("clinician_email", None)
+    return jsonify({"status": "logged_out"})
+
+
+@app.route("/api/psychiatrist/alerts", methods=["GET"])
+@psychiatrist_access_required
+def psychiatrist_alerts():
+    return jsonify({
+        "alerts": db.get_psychiatrist_alerts(),
+        "counts": db.get_psychiatrist_counts(),
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.route("/api/psychiatrist/patients", methods=["GET"])
+@psychiatrist_access_required
+def psychiatrist_patients():
+    return jsonify({"patients": db.get_psychiatrist_patients()})
+
+
+@app.route("/api/psychiatrist/patients/<patient_ref>", methods=["GET"])
+@psychiatrist_access_required
+def psychiatrist_patient_detail(patient_ref):
+    patient = db.get_psychiatrist_patient_detail(patient_ref)
+    if not patient:
+        return jsonify({"error": "patient_not_found"}), 404
+    # Highlight the chat turns that tripped the crisis detector so the clinician can find them fast
+    for turn in patient["chat"]:
+        turn["crisis"] = turn["sender"] == "user" and bool(_CRISIS_RE.search(turn["message"]))
+    log_audit_event(AuditEventType.COUNSELOR_ACCESS, target_id=patient_ref, details={"action": "patient_opened"}, ip_address=request.remote_addr)
+    return jsonify(patient)
+
+
+@app.route("/api/psychiatrist/cases/<case_id>", methods=["POST"])
+@psychiatrist_access_required
+def psychiatrist_update_case(case_id):
+    data = json_payload()
+    status = data.get("status")
+    notes = data.get("notes")
+    if status is not None and status not in db.CASE_STATUSES:
+        return jsonify({"error": "invalid_status"}), 400
+    if notes is not None:
+        notes = str(notes).strip()
+        if len(notes) > 2000:
+            return jsonify({"error": "notes_too_long", "message": "Notes must be 2000 characters or fewer."}), 400
+    if status is None and notes is None:
+        return jsonify({"error": "nothing_to_update"}), 400
+    case = db.update_psychiatrist_case(case_id, status=status, notes=notes)
+    if not case:
+        return jsonify({"error": "case_not_found"}), 404
+    log_audit_event(AuditEventType.CASE_REVIEWED, target_id=case_id, details={"status": status, "note_saved": notes is not None}, ip_address=request.remote_addr)
+    return jsonify(case)
 
 
 @app.route("/api/profile/<token>", methods=["GET"])
